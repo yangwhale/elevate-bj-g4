@@ -10,7 +10,6 @@ guessing. Append a row when you create something; do not rely on memory.
 | # | Resource | Identifier | Region | Created | Removed |
 | :-- | :--- | :--- | :--- | :--- | :--- |
 | 0 | Reasoning Engine (empty, created by a permission probe — **already deleted**) | `748733883410808832` | us-central1 | 2026-08-06 23:18 HKT | 2026-08-06 23:18 HKT |
-
 | 1 | GCS bucket, the corpus Vertex AI Search ingests | `gs://chris-pgp-host-elevate-hr-policies` (187 objects) | us-central1 | 2026-08-06 23:50 HKT | — |
 | 2 | Vertex AI Search data store | `elevate-hr-policies` (collection `default_collection`) | global | 2026-08-06 23:52 HKT | — |
 | 3 | Vertex AI Search app / engine | `elevate-hr-search`, tier STANDARD | global | 2026-08-06 23:53 HKT | — |
