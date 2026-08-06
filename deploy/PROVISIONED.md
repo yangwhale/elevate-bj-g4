@@ -19,3 +19,20 @@ guessing. Append a row when you create something; do not rely on memory.
 | 6 | GCS bucket, `.txt` mirror of the corpus. Vertex AI Search rejects `text/markdown`, so the index reads this copy while citations keep the `.md` path | `gs://chris-pgp-host-elevate-hr-policies-txt` (187 objects) | us-central1 | 2026-08-07 01:05 HKT | — |
 
 Run `deploy/teardown.sh` to remove everything still live.
+
+## Notes
+
+* Vertex AI Search rejects `text/markdown` on import despite listing it in the
+  error message's allowed set. The index therefore reads a `.txt` mirror
+  (`...-hr-policies-txt`), and `rag_tool` maps the returned link back to the
+  `.md` path so citations resolve against the published corpus.
+* `GOOGLE_CLOUD_PROJECT` is a reserved env var name on Agent Engine; setting it
+  fails the update with 400 FailedPrecondition.
+* Nothing here holds customer data. The corpus is a synthetic handbook and the
+  HCM/ITSM backends are in-process mocks.
+
+## Cost shape
+
+Discovery Engine standard tier indexes ~1 MB of text; Agent Engine bills the
+runtime while an instance exists. Deleting the Agent Engine instance and the
+search app removes the recurring cost; the buckets hold ~2 MB.

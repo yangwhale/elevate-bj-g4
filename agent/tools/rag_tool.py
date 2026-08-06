@@ -30,6 +30,8 @@ STOP_WORDS = {
     "much", "many", "get", "have", "there", "any", "if", "when", "will",
 }
 
+_LAST_ERROR: dict[str, str] = {}
+
 CORPUS_URI = os.environ.get(
     "POLICY_CORPUS_URI", "gs://${PROJECT_ID}-hr-policies"
 )
@@ -102,13 +104,10 @@ def _vertex_search(query: str) -> dict[str, Any] | None:
                 serving_config=serving_config,
                 query=query,
                 page_size=MAX_RESULTS,
-                content_search_spec=de.SearchRequest.ContentSearchSpec(
-                    extractive_content_spec=de.SearchRequest.ContentSearchSpec
-                    .ExtractiveContentSpec(max_extractive_segment_count=2),
-                ),
             )
         )
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 - the reason must not be swallowed
+        _LAST_ERROR["reason"] = f"{type(exc).__name__}: {exc}"[:300]
         return None
 
     results = []
@@ -123,10 +122,17 @@ def _vertex_search(query: str) -> dict[str, Any] | None:
         if uri.endswith(".txt"):
             uri = uri[: -len(".txt")] + ".md"
         uri = uri.replace("-elevate-hr-policies-txt/", "-elevate-hr-policies/")
-        segments = data.get("extractive_segments") or []
-        excerpt = " ".join(
-            (s.get("content") or "") for s in segments
-        ).strip() or (data.get("snippets") or [{}])[0].get("snippet", "")
+        # The datastore indexes a .txt mirror and does not return extractive
+        # segments on the standard tier, so the excerpt is read from the
+        # corpus that ships with the deployment. Vertex AI Search supplies the
+        # ranking; the text still comes from the document being cited.
+        rel = uri.split("/", 3)[-1] if uri.startswith("gs://") else uri
+        local = config.KNOWLEDGE_DIR / rel
+        excerpt = ""
+        if local.is_file():
+            excerpt = _strip_front_matter(local.read_text(encoding="utf-8"))
+        if not excerpt:
+            excerpt = (data.get("snippets") or [{}])[0].get("snippet", "")
         results.append({
             "title": uri.rsplit("/", 1)[-1].removesuffix(".md").replace("-", " "),
             "document": uri.split("/", 3)[-1] if uri.startswith("gs://") else uri,
