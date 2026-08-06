@@ -34,10 +34,11 @@ class ElevateSessionService(BaseSessionService):
 
     async def create_session(
         self,
+        *,
         app_name: str,
         user_id: str,
-        session_id: str | None = None,
         state: dict[str, Any] | None = None,
+        session_id: str | None = None,
     ) -> Session:
         """Creates a new session conforming to UserSessionSchema."""
         sid = session_id or str(uuid.uuid4())
@@ -71,9 +72,14 @@ class ElevateSessionService(BaseSessionService):
         return session
 
     async def get_session(
-        self, app_name: str, user_id: str, session_id: str
+        self, *, app_name: str, user_id: str, session_id: str, config=None
     ) -> Session | None:
-        """Retrieves an active session and updates its last_active_at timestamp."""
+        """Retrieves an active session and updates its last_active_at timestamp.
+
+        `config` is part of the BaseSessionService contract (event windowing).
+        This service keeps whole sessions in memory, so it is accepted and
+        ignored rather than omitted, which makes the Runner's keyword call fail.
+        """
         session = self.active_sessions.get(session_id)
         if not session:
             # Attempt to load from disk
@@ -86,7 +92,7 @@ class ElevateSessionService(BaseSessionService):
                 )
         return session
 
-    async def list_sessions(self, app_name: str, user_id: str) -> list[Session]:
+    async def list_sessions(self, *, app_name: str, user_id: str | None = None):
         """Lists all active and persisted sessions for a user."""
         sessions = [
             s for s in self.active_sessions.values()
@@ -104,7 +110,7 @@ class ElevateSessionService(BaseSessionService):
             )
             self._persist_session(sid, session, self.session_metadata[sid])
 
-    async def delete_session(self, app_name: str, user_id: str, session_id: str) -> None:
+    async def delete_session(self, *, app_name: str, user_id: str, session_id: str) -> None:
         """Hard-purges a session (GDPR Art. 17 right to be forgotten)."""
         self.active_sessions.pop(session_id, None)
         self.session_metadata.pop(session_id, None)

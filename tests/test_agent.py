@@ -19,6 +19,7 @@ from agent.prompt import build_supervisor_prompt
 from agent.session import ElevateSessionService
 from agent.mcp_servers.workweek_server import WorkWeekFastMCPServer
 from agent.mcp_servers.serviceimmediately_server import ServiceImmediatelyFastMCPServer
+from agent import config
 from agent.tools.rag_tool import vertex_search_policies
 from agent.tools.serviceimmediately_tool import (
     create_ticket,
@@ -308,7 +309,9 @@ def test_elevate_session_service_lifecycle():
 
     async def _test_lifecycle():
         # 1. Create Session
-        session = await service.create_session("elevate-hr-agent", user_id, session_id)
+        session = await service.create_session(
+            app_name="elevate-hr-agent", user_id=user_id, session_id=session_id
+        )
         assert session.id == session_id
         assert session.user_id == user_id
 
@@ -324,8 +327,12 @@ def test_elevate_session_service_lifecycle():
         assert service.session_metadata[session_id]["session_state"] == "ARCHIVED"
 
         # 4. Delete / Purge Session
-        await service.delete_session("elevate-hr-agent", user_id, session_id)
-        retrieved = await service.get_session("elevate-hr-agent", user_id, session_id)
+        await service.delete_session(
+            app_name="elevate-hr-agent", user_id=user_id, session_id=session_id
+        )
+        retrieved = await service.get_session(
+            app_name="elevate-hr-agent", user_id=user_id, session_id=session_id
+        )
         assert retrieved is None
 
     asyncio.run(_test_lifecycle())
@@ -335,14 +342,25 @@ def test_elevate_session_service_lifecycle():
 # 7. Policy Knowledge Base (RAG) Tests
 # =============================================================================
 def test_vertex_search_policies_bereavement():
-    """Verify policy lookup with deep-link citation generation (FR-5.3)."""
+    """Verify policy lookup returns a citation that resolves to the corpus (FR-5.3)."""
     res = vertex_search_policies("bereavement leave policy")
     assert res["status"] == "success"
     assert len(res["results"]) > 0
     top = res["results"][0]
-    assert "Bereavement Leave" in top["title"]
-    assert "https://hr.enterprise.internal/policies/bereavement-leave" in top["url"]
-    assert "[Bereavement Leave Policy](https://hr.enterprise.internal/policies/bereavement-leave)" == top["citation"]
+    assert "bereavement" in top["document"].lower()
+    assert (config.KNOWLEDGE_DIR / top["document"]).is_file()
+    assert top["uri"].startswith("gs://")
+    assert top["citation"] == f"Source: {top['uri']}"
+    # The excerpt must carry the handbook's figure, not the 5-and-3-days one
+    # that the removed hardcoded catalog asserted.
+    assert "4 weeks" in top["excerpt"]
+
+
+def test_policy_search_flags_terms_absent_from_the_corpus():
+    """A question about something the handbook never mentions must be marked."""
+    res = vertex_search_policies("how much paid sabbatical after five years")
+    assert "sabbatical" in res.get("unmatched_terms", [])
+    assert "WARNING" in res["grounding_instruction"]
 
 
 def test_vertex_search_policies_unrelated():

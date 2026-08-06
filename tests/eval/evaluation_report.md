@@ -9,7 +9,7 @@
 | Config | `tests/eval/eval_config.yaml` |
 | Version | 4.0.0 |
 | Date | 2026-08-06 |
-| **Execution status** | **Not yet executed against a deployed agent.** The local code metrics have been run against synthetic instances and behave correctly on both positive and negative inputs. Judge-scored results are added after the first run against a deployed Agent Runtime instance. |
+| **Execution status** | **Local smoke run only.** Eight cases were run end to end against the agent on Vertex (`gemini-2.5-flash`, local mock backends) and the three local code metrics were run against synthetic instances. The full judge-scored suite has not been run; those results are added after deployment to Agent Runtime. |
 
 > **On the absence of results.** An earlier version of this document reported a
 > baseline run of 178 cases with a 1.12% pass rate and a failure breakdown to
@@ -125,6 +125,31 @@ The three local metrics were executed against synthetic instances. Verified beha
 | One tool call against an expectation of one | `tool_call_efficiency` | `1.0` |
 
 All 52 `reference` answers in the single-turn set were run through `citation_resolvability`: 0 unresolvable citations.
+
+### 3.3 What the smoke run found
+
+Eight cases were driven through `_run_query_async` against Vertex with the local
+mock backends. The run was worth more than its size, because it surfaced four
+defects that no amount of reading would have:
+
+| Defect | Symptom | Fix |
+| :--- | :--- | :--- |
+| `rag_tool` carried its own facts | A hardcoded `POLICY_CATALOG` asserted 5 and 3 days of bereavement leave. The handbook grants 4 weeks. The agent answered confidently from the catalog, and the corpus was never consulted | Catalog deleted; retrieval now runs over `knowledge/` only |
+| Citations pointed at a fictional host | Answers cited `https://hr.enterprise.internal/policies/...`, a hostname that does not exist. `citation_resolvability` would have scored 0 on every policy answer | Tool returns `gs://` URIs; the prompt forbids constructing a URL |
+| Writes executed without confirmation | The agent resolved *and* closed a ticket in one turn, having been asked only to close it | Confirmation protocol written into the prompt as a numbered rule, with payload pinning |
+| Priority inflation | A second-monitor request was created at `2 - High` | Priority definitions written into the prompt; the agent now declines and proposes `4 - Low` |
+| `ElevateSessionService` signature drift | Every turn failed with `get_session() got an unexpected keyword argument 'config'` | Signatures aligned to `BaseSessionService` |
+
+The first of these is the one that matters. A retrieval tool that ships its own
+answers will override the corpus with confidence, and the resulting behaviour
+looks like a well-grounded citation to a document nobody checked. It is exactly
+the failure `NFR-3.1` exists to prevent, and it was invisible until a real turn
+was executed.
+
+After the fixes, the same cases return the handbook's figures with resolvable
+citations, refuse the cross-tenant read, refuse the `New -> Closed` transition
+while offering the correct path, and refuse the unjustified Critical priority —
+each waiting for confirmation before writing.
 
 ### 3.3 Judge integrity
 
