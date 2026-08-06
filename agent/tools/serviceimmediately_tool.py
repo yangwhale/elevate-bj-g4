@@ -287,7 +287,7 @@ def update_ticket_status(
     """Updates the lifecycle state of a ticket according to ITIL state machine rules.
 
     Valid transitions:
-    - 'New' -> 'In Progress' or 'Closed'
+    - 'New' -> 'In Progress' or 'Resolved'
     - 'In Progress' -> 'Resolved' or 'Closed'
     - 'Resolved' -> 'In Progress' (reopen) or 'Closed'
     - 'Closed' -> Immutable (cannot transition)
@@ -304,9 +304,12 @@ def update_ticket_status(
 
     current_state = ticket["state"]
 
-    # ITIL State Machine Transition Matrix (BRD FR-4.3, SDD 5.1)
+    # ITIL State Machine Transition Matrix (BRD FR-4.3, SDD 5.1.3).
+    # FR-4.3 names New -> Closed as the transition to reject: closing an
+    # untouched ticket leaves no record of why it was abandoned. A ticket
+    # raised in error goes New -> Resolved (with notes) -> Closed.
     valid_transitions = {
-        "New": ["In Progress", "Closed"],
+        "New": ["In Progress", "Resolved"],
         "In Progress": ["Resolved", "Closed"],
         "Resolved": ["In Progress", "Closed"],
         "Closed": [],

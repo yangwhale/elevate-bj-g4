@@ -239,8 +239,9 @@ def test_itil_state_machine_transitions():
     )
     tid = ticket["ticket_id"]
 
-    # Invalid: New -> Resolved (must go through In Progress)
-    invalid_res = update_ticket_status(tid, "Resolved")
+    # Invalid: New -> Closed. FR-4.3 names this transition specifically, because
+    # closing an untouched ticket leaves no record of why it was abandoned.
+    invalid_res = update_ticket_status(tid, "Closed")
     assert invalid_res["status"] == "error"
     assert invalid_res["error_code"] == "INVALID_STATE_TRANSITION"
 
@@ -361,3 +362,26 @@ def test_root_agent_configuration():
     assert len(root_agent.tools) == 12
     assert root_agent.before_agent_callback is not None
     assert root_agent.after_agent_callback is not None
+
+
+def test_new_to_resolved_is_permitted_with_notes():
+    """A ticket raised in error goes New -> Resolved -> Closed (SDD 5.1.3)."""
+    set_itsm_caller_context("EMP-1002")
+    ticket = create_ticket(
+        requested_by="EMP-1002",
+        category="IT",
+        short_description="Raised in error, abandon path",
+    )
+    tid = ticket["ticket_id"]
+
+    resolved = update_ticket_status(tid, "Resolved", resolution_notes="Raised in error.")
+    assert resolved["status"] == "success"
+    assert resolved["new_state"] == "Resolved"
+
+    closed = update_ticket_status(tid, "Closed")
+    assert closed["status"] == "success"
+    assert closed["new_state"] == "Closed"
+
+    # Closed is immutable.
+    after = update_ticket_status(tid, "In Progress")
+    assert after["status"] == "error"

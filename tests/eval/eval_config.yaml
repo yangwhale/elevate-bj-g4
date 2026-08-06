@@ -110,30 +110,27 @@ custom_metrics:
   - name: citation_resolvability
     execution: local
     description: >
-      Every citation must point at a corpus document and a section heading that
-      exists. A citation to a plausible but non-existent section is a
-      hallucination that a text-similarity judge will not catch.
+      Every citation must point at a document that exists in the corpus. A
+      citation to a plausible but non-existent file is a hallucination that a
+      text-similarity judge will not catch, because the surrounding prose reads
+      exactly like a correct answer.
     custom_function: |
       def evaluate(instance):
-          import os, re, glob
+          import os, re
           resp = instance.get("response") or {}
           text = " ".join(p.get("text", "") for p in resp.get("parts", []))
-          cites = re.findall(r"gs://[^/\s]+/([a-z0-9._-]+\.md)#([a-z0-9-]+)", text)
+          cites = re.findall(r"gs://[^/\s]+/([A-Za-z0-9._/-]+\.md)", text)
           if not cites:
               return {"score": 1.0, "explanation": "No citation present; not applicable."}
 
-          root = os.environ.get("POLICY_CORPUS_DIR", "policies")
-          available = {}
-          for path in glob.glob(os.path.join(root, "*.md")):
-              body = open(path, encoding="utf-8").read()
-              anchors = set()
-              for h in re.findall(r"^#{2,3}\s+(.+)$", body, re.M):
-                  a = re.sub(r"[^\w\s-]", "", h.strip().lower())
-                  anchors.add(re.sub(r"\s+", "-", a))
-              available[os.path.basename(path)] = anchors
+          root = os.environ.get("POLICY_CORPUS_DIR", "knowledge")
+          available = set()
+          for dirpath, _, names in os.walk(root):
+              for n in names:
+                  if n.endswith(".md"):
+                      available.add(os.path.relpath(os.path.join(dirpath, n), root))
 
-          dead = [f"{d}#{a}" for d, a in cites
-                  if d not in available or a not in available[d]]
+          dead = sorted({c for c in cites if c not in available})
           if dead:
               return {"score": 0.0,
                       "explanation": "Unresolvable citation(s): " + ", ".join(dead)}

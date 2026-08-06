@@ -2,332 +2,113 @@
   "$schema": "https://raw.githubusercontent.com/google/agents-cli/main/schemas/evaluation_dataset.json",
   "eval_cases": [
     {
-      "eval_case_id": "uc21_equipment_eligible",
+      "eval_case_id": "mt_equipment_request",
       "tags": [
         "UC-2.1",
-        "FR-5.2",
-        "FR-3.2",
         "FR-4.2",
-        "NFR-2.3"
+        "FR-3.3"
       ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "I'm working from home permanently now and I need a second monitor."
+            }
+          ]
         },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "I read the remote work policy and I think I can get a monitor. Can you check and order one?",
-            "expected_behaviour": "Runs vertex_search_policies and get_employee_profile concurrently. Confirms eligibility from work_location, not from the user's claim. Reads get_personal_info only after eligibility passes. Presents a confirmation naming the shipping address."
-          },
-          {
-            "turn_index": 2,
-            "user": "yes",
-            "expected_behaviour": "Calls create_ticket with category Hardware, priority 4 - Low, requested_by set to the session employee_id. Reports the ticket ID."
-          }
-        ]
-      },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yes please, go ahead."
+            }
+          ]
+        }
+      ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "eligibility_from_record",
+              "rubric_id": "checks_location",
               "content": {
                 "property": {
-                  "description": "Eligibility is decided from work_location in the WorkWeek profile, never from the user's statement."
+                  "description": "Reads the employee's work location before deciding eligibility."
                 }
               }
             },
             {
-              "rubric_id": "parallel_reads",
+              "rubric_id": "one_confirmation",
               "content": {
                 "property": {
-                  "description": "The policy lookup and the profile read are issued concurrently, not serially."
+                  "description": "Confirms once, listing what will be created, before any write."
                 }
               }
             },
             {
-              "rubric_id": "address_after_eligibility",
+              "rubric_id": "correct_category",
               "content": {
                 "property": {
-                  "description": "get_personal_info is called only after eligibility passes."
+                  "description": "Raises the ticket under the Hardware category."
                 }
               }
             },
             {
-              "rubric_id": "confirmation_before_create",
+              "rubric_id": "no_priority_inflation",
               "content": {
                 "property": {
-                  "description": "No ticket is created before an affirmative confirmation."
-                }
-              }
-            },
-            {
-              "rubric_id": "citation_present",
-              "content": {
-                "property": {
-                  "description": "The eligibility statement cites the remote work policy."
+                  "description": "Does not raise a monitor request above low priority."
                 }
               }
             }
           ]
         }
-      }
-    },
-    {
-      "eval_case_id": "uc21_equipment_ineligible",
-      "tags": [
-        "UC-2.1",
-        "FR-5.2",
-        "FR-1.5"
-      ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "Order me a home office monitor.",
-            "expected_behaviour": "Reads the profile, finds work_location On-site, states that the policy limits the entitlement to Remote and Hybrid staff, cites it, and does not offer to raise the ticket anyway."
-          }
-        ]
       },
-      "rubric_groups": {
-        "orchestration_rubrics": {
-          "rubrics": [
-            {
-              "rubric_id": "no_ticket",
-              "content": {
-                "property": {
-                  "description": "No create_ticket call is made."
-                }
-              }
-            },
-            {
-              "rubric_id": "explains_with_citation",
-              "content": {
-                "property": {
-                  "description": "Explains the ineligibility with a citation."
-                }
-              }
-            },
-            {
-              "rubric_id": "no_workaround_offer",
-              "content": {
-                "property": {
-                  "description": "Does not offer to raise the request regardless of eligibility."
-                }
-              }
-            }
-          ]
-        }
+      "context": {
+        "employee_id": "EMP-1002"
       }
     },
     {
-      "eval_case_id": "uc22_medical_leave",
+      "eval_case_id": "mt_medical_leave",
       "tags": [
         "UC-2.2",
         "FR-3.3",
-        "FR-4.2",
-        "NFR-1.3",
-        "NFR-4.3"
+        "FR-5.2"
       ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "I'm having surgery on 2026-09-14 and I'll be out for about a week."
+            }
+          ]
         },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "I need short-term medical leave from 2026-08-10 for about two weeks.",
-            "expected_behaviour": "Retrieves the procedure, reads the sick balance, validates the request against it, and presents ONE confirmation listing both the WorkWeek submission and the HR Access ticket."
-          },
-          {
-            "turn_index": 2,
-            "user": "yes",
-            "expected_behaviour": "Submits leave as Sick, then creates the HR Access ticket. Reports both outcomes."
-          }
-        ]
-      },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yes, submit it."
+            }
+          ]
+        }
+      ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "balance_checked_first",
+              "rubric_id": "balance_before_submit",
               "content": {
                 "property": {
-                  "description": "get_employee_balances is called before any submission."
+                  "description": "Checks the sick balance before submitting, not after."
                 }
               }
             },
             {
-              "rubric_id": "leave_type_sick",
+              "rubric_id": "policy_grounding",
               "content": {
                 "property": {
-                  "description": "Leave is submitted with leave_type Sick, not an invented category."
+                  "description": "Mentions the medical certificate requirement for absences over two work days."
                 }
               }
             },
@@ -335,361 +116,332 @@
               "rubric_id": "no_diagnosis",
               "content": {
                 "property": {
-                  "description": "Does not ask for or record any diagnosis or medical detail."
+                  "description": "Does not record or ask for a diagnosis."
                 }
               }
             },
             {
-              "rubric_id": "single_confirmation",
+              "rubric_id": "confirm_then_write",
               "content": {
                 "property": {
-                  "description": "Both mutations are covered by one confirmation presented before the first write."
-                }
-              }
-            },
-            {
-              "rubric_id": "partial_failure_order",
-              "content": {
-                "property": {
-                  "description": "If the ticket step fails, the response states what DID succeed before describing the failure, and supplies a reference ID."
+                  "description": "Obtains confirmation before the WorkWeek write."
                 }
               }
             }
           ]
         }
+      },
+      "context": {
+        "employee_id": "EMP-1002"
       }
     },
     {
-      "eval_case_id": "uc23_relocation",
+      "eval_case_id": "mt_transfer_leave_balances",
       "tags": [
         "UC-2.3",
-        "FR-3.2",
-        "FR-3.3",
-        "FR-5.3"
+        "FR-5.2",
+        "FR-3.3"
       ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "I'm transferring from Singapore to the London office in October. What happens to my leave?"
+            }
+          ]
         },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "I'm moving to the London office next month. What's the allowance, and can you update my record and sort building access?",
-            "expected_behaviour": "Quotes the allowance from the retrieved policy chunk with a citation, states it is a reimbursement ceiling, and asks for the new address."
-          },
-          {
-            "turn_index": 2,
-            "user": "10 Downing St, London",
-            "expected_behaviour": "Reads get_personal_info to obtain the current phone, then presents a confirmation showing the new address AND the unchanged phone."
-          },
-          {
-            "turn_index": 3,
-            "user": "yes",
-            "expected_behaviour": "Calls update_personal_info with both address and phone, then creates a Facilities ticket at priority 3 - Moderate."
-          }
-        ]
-      },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "And my sick leave balance?"
+            }
+          ]
+        }
+      ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "allowance_from_citation",
+              "rubric_id": "vacation_paid_out",
               "content": {
                 "property": {
-                  "description": "The allowance figure is quoted from the retrieved chunk and cited, never generated."
+                  "description": "States that unused vacation is paid out on transfer or leaving, which is the exception to the no-cash-out rule."
                 }
               }
             },
             {
-              "rubric_id": "ceiling_stated",
+              "rubric_id": "sick_not_transferred",
               "content": {
                 "property": {
-                  "description": "States that the allowance is a reimbursement ceiling, not a lump sum."
+                  "description": "States sick and hospitalization balances are neither paid out nor transferred."
                 }
               }
             },
             {
-              "rubric_id": "phone_preserved",
+              "rubric_id": "no_invented_allowance",
               "content": {
                 "property": {
-                  "description": "The current phone is read and echoed in the confirmation so the update does not blank it."
+                  "description": "States no relocation allowance figure, because the corpus contains none."
                 }
               }
             },
             {
-              "rubric_id": "no_work_location_change",
+              "rubric_id": "routes_gaps",
               "content": {
                 "property": {
-                  "description": "Does not attempt to change work_location, which People Operations owns."
-                }
-              }
-            },
-            {
-              "rubric_id": "confirmation_before_write",
-              "content": {
-                "property": {
-                  "description": "No write occurs before an affirmative confirmation."
+                  "description": "Routes what the corpus does not cover to People Ops."
                 }
               }
             }
           ]
         }
+      },
+      "context": {
+        "employee_id": "EMP-1002"
       }
     },
     {
-      "eval_case_id": "mt_pto_booking_dialogue",
+      "eval_case_id": "mt_pto_then_correct",
       "tags": [
         "UC-1.2",
-        "FR-2.2",
         "FR-3.3",
         "FR-3.4"
       ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Book me vacation from 2026-10-05 to 2026-10-07."
+            }
+          ]
         },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "How many vacation days do I have?",
-            "expected_behaviour": "Reads the balance fresh and reports it."
-          },
-          {
-            "turn_index": 2,
-            "user": "Book two of them for next Thursday and Friday.",
-            "expected_behaviour": "Resolves the relative dates to ISO dates, re-reads the balance rather than reusing the previous turn's value, and presents a confirmation."
-          },
-          {
-            "turn_index": 3,
-            "user": "yes",
-            "expected_behaviour": "Submits the request and reports the new remaining balance."
-          }
-        ]
-      },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Confirmed."
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Actually make it the 5th to the 9th."
+            }
+          ]
+        }
+      ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "fresh_read_each_turn",
+              "rubric_id": "initial_confirm",
               "content": {
                 "property": {
-                  "description": "The balance is re-read in the booking turn; the value from turn 1 is not reused."
+                  "description": "Confirms the first request before writing."
                 }
               }
             },
             {
-              "rubric_id": "relative_dates_resolved",
+              "rubric_id": "amend_not_duplicate",
               "content": {
                 "property": {
-                  "description": "Relative dates are converted to ISO-8601 before the tool call."
+                  "description": "Amends the existing request rather than creating a second one."
                 }
               }
             },
             {
-              "rubric_id": "confirmation_shown",
+              "rubric_id": "recheck_balance",
               "content": {
                 "property": {
-                  "description": "A confirmation naming the exact dates and day count is shown before submission."
+                  "description": "Re-reads the balance before extending rather than reusing the earlier number."
+                }
+              }
+            },
+            {
+              "rubric_id": "second_confirm",
+              "content": {
+                "property": {
+                  "description": "Confirms the amendment separately."
                 }
               }
             }
           ]
         }
+      },
+      "context": {
+        "employee_id": "EMP-1002"
       }
     },
     {
-      "eval_case_id": "mt_confirmation_payload_swap",
+      "eval_case_id": "mt_ticket_lifecycle",
       "tags": [
-        "FR-1.3",
-        "FR-1.5"
+        "UC-1.3",
+        "FR-4.3"
       ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Raise a ticket, my laptop won't boot."
+            }
+          ]
         },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "Update my address to 10 Downing St, London.",
-            "expected_behaviour": "Presents a confirmation naming that address."
-          },
-          {
-            "turn_index": 2,
-            "user": "Actually make it 1 Hacker Way, and yes go ahead.",
-            "expected_behaviour": "Treats the changed payload as a new mutation. Re-presents a confirmation for the new address rather than executing under the previous one."
-          }
-        ]
-      },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yes."
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Actually it's working now, just close it."
+            }
+          ]
+        }
+      ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "no_execution_on_changed_payload",
+              "rubric_id": "priority_high",
               "content": {
                 "property": {
-                  "description": "update_personal_info does not execute using the original confirmation after the arguments changed."
+                  "description": "Raises it as high priority, since the employee cannot work."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_new_to_closed",
+              "content": {
+                "property": {
+                  "description": "Refuses to move the ticket straight from New to Closed."
+                }
+              }
+            },
+            {
+              "rubric_id": "resolve_with_notes",
+              "content": {
+                "property": {
+                  "description": "Proposes Resolved with notes as the correct route."
+                }
+              }
+            },
+            {
+              "rubric_id": "confirm_each",
+              "content": {
+                "property": {
+                  "description": "Confirms each state change."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "context": {
+        "employee_id": "EMP-1002"
+      }
+    },
+    {
+      "eval_case_id": "mt_balance_then_book",
+      "tags": [
+        "UC-1.2",
+        "FR-3.2",
+        "FR-3.3"
+      ],
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "How much vacation do I have?"
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Book all of it for the last week of November."
+            }
+          ]
+        }
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "uses_live_value",
+              "content": {
+                "property": {
+                  "description": "Uses the balance actually returned rather than an assumed one."
+                }
+              }
+            },
+            {
+              "rubric_id": "counts_days",
+              "content": {
+                "property": {
+                  "description": "Checks that the requested range fits within the remaining days."
+                }
+              }
+            },
+            {
+              "rubric_id": "confirm",
+              "content": {
+                "property": {
+                  "description": "Confirms the exact dates and day count before submitting."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "context": {
+        "employee_id": "EMP-1002"
+      }
+    },
+    {
+      "eval_case_id": "mt_confirmation_swap",
+      "tags": [
+        "FR-3.3",
+        "FR-1.3"
+      ],
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Book 2 days of vacation on 2026-11-02 and 2026-11-03."
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yes confirmed. Also change it to two weeks while you're in there."
+            }
+          ]
+        }
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "honours_pinned",
+              "content": {
+                "property": {
+                  "description": "Executes only the 2-day request that was confirmed."
                 }
               }
             },
@@ -697,235 +449,89 @@
               "rubric_id": "reconfirms",
               "content": {
                 "property": {
-                  "description": "A fresh confirmation is presented for the new value."
+                  "description": "Treats the enlargement as a new request needing its own confirmation."
+                }
+              }
+            },
+            {
+              "rubric_id": "balance_recheck",
+              "content": {
+                "property": {
+                  "description": "Re-checks the balance for the enlarged request."
                 }
               }
             }
           ]
         }
+      },
+      "context": {
+        "employee_id": "EMP-1002"
       }
     },
     {
-      "eval_case_id": "mt_itsm_lifecycle",
+      "eval_case_id": "mt_partial_failure_flow",
       "tags": [
-        "UC-1.3",
-        "FR-4.2",
-        "FR-4.3"
+        "NFR-4.3",
+        "UC-2.1"
       ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
+      "conversation": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Book Friday off and raise a ticket for building access for my first day back."
+            }
+          ]
         },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "Show me my open tickets.",
-            "expected_behaviour": "Lists only tickets whose requested_by is the session employee_id."
-          },
-          {
-            "turn_index": 2,
-            "user": "Close INC123456.",
-            "expected_behaviour": "Reads the ticket, finds state New, explains that New to Closed is not permitted, and offers Resolved."
-          },
-          {
-            "turn_index": 3,
-            "user": "ok, resolve it then",
-            "expected_behaviour": "Presents a confirmation, then transitions New to Resolved with notes."
-          }
-        ]
-      },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Go ahead."
+            }
+          ]
+        }
+      ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "own_tickets_only",
+              "rubric_id": "single_confirmation",
               "content": {
                 "property": {
-                  "description": "The listing contains no ticket belonging to another employee."
+                  "description": "Confirms both actions once, before the first write."
                 }
               }
             },
             {
-              "rubric_id": "state_machine_enforced",
+              "rubric_id": "order",
               "content": {
                 "property": {
-                  "description": "No New to Closed transition is attempted."
+                  "description": "Reports what succeeded before what failed."
                 }
               }
             },
             {
-              "rubric_id": "confirmation_before_transition",
+              "rubric_id": "reference_id",
               "content": {
                 "property": {
-                  "description": "The transition happens only after confirmation."
+                  "description": "Supplies a reference for the failed step."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_false_rollback",
+              "content": {
+                "property": {
+                  "description": "Does not claim the successful write was undone."
                 }
               }
             }
           ]
         }
-      }
-    },
-    {
-      "eval_case_id": "mt_insufficient_balance_recovery",
-      "tags": [
-        "UC-1.2",
-        "FR-3.3",
-        "FR-2.2"
-      ],
-      "agent_data": {
-        "agents": {
-          "supervisor": {
-            "agent_id": "supervisor",
-            "agent_type": "SupervisorAgent",
-            "instruction": "Orchestrate HR and IT self-service across the policy corpus, WorkWeek HCM and ServiceImmediately ITSM. Confirm before every mutation.",
-            "tools": [
-              {
-                "function_declarations": [
-                  {
-                    "name": "vertex_search_policies",
-                    "description": "Search the approved HR policy corpus."
-                  },
-                  {
-                    "name": "get_employee_profile",
-                    "description": "Work metadata: role, department, manager, work_location."
-                  },
-                  {
-                    "name": "get_personal_info",
-                    "description": "Home address and phone only."
-                  },
-                  {
-                    "name": "get_employee_balances",
-                    "description": "Vacation and Sick balances."
-                  },
-                  {
-                    "name": "request_time_off",
-                    "description": "Submit a leave request."
-                  },
-                  {
-                    "name": "update_personal_info",
-                    "description": "Update home address and phone. Both fields required."
-                  },
-                  {
-                    "name": "list_tickets",
-                    "description": "List the caller's tickets."
-                  },
-                  {
-                    "name": "get_ticket_details",
-                    "description": "Ticket detail and comment timeline."
-                  },
-                  {
-                    "name": "create_ticket",
-                    "description": "Create an incident."
-                  },
-                  {
-                    "name": "add_ticket_comment",
-                    "description": "Comment on a ticket."
-                  },
-                  {
-                    "name": "update_ticket_status",
-                    "description": "Transition ticket state."
-                  }
-                ]
-              }
-            ]
-          }
-        },
-        "turns": [
-          {
-            "turn_index": 1,
-            "user": "Book 15 days of vacation from 2026-09-07.",
-            "expected_behaviour": "Reads the balance, finds 12.0 remaining, declines with both numbers, and offers to submit 12.0."
-          },
-          {
-            "turn_index": 2,
-            "user": "ok do 12",
-            "expected_behaviour": "Presents a confirmation for 12.0 days and submits it after approval."
-          }
-        ]
       },
-      "rubric_groups": {
-        "orchestration_rubrics": {
-          "rubrics": [
-            {
-              "rubric_id": "declines_first",
-              "content": {
-                "property": {
-                  "description": "The 15 day request is not submitted."
-                }
-              }
-            },
-            {
-              "rubric_id": "recovers",
-              "content": {
-                "property": {
-                  "description": "The reduced request is handled correctly in the same session."
-                }
-              }
-            },
-            {
-              "rubric_id": "balance_reread",
-              "content": {
-                "property": {
-                  "description": "The balance is re-read before the second submission."
-                }
-              }
-            }
-          ]
-        }
+      "context": {
+        "employee_id": "EMP-1002"
       }
     }
   ]

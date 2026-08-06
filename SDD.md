@@ -29,7 +29,8 @@
 | **1.10** | 2026-08-06 | C. Yang (design review) | **Rendering fix, round 2.** The §7.1 Gantt still failed on GitHub with `Cannot read properties of undefined (reading 'type')`. Cause: a task **name** containing a colon (`T-12 Resilience: retry, breaker, DLQ`). Gantt splits each line at the first `:`, so the remainder was parsed as task metadata and the comma-separated fragments produced an undefined field. Renamed with an em dash. Upgraded the verification harness from `mermaid.parse` to `mermaid.render` under jsdom — the previous round only proved the diagrams parse, and this failure was a render-stage failure that parsing could not catch. All 14 diagrams now render. |
 | **1.11** | 2026-08-06 | C. Yang (design review) | **Executability audit.** Audited the document by asking, for each build task in Appendix B, whether an implementer could complete it without asking a question. Thirteen could not. Added Appendix C to supply the missing values and interfaces: deployment method and invocation contract (Terraform cannot create an Agent Runtime instance, which the plan had implied), Vertex AI Search datastore settings, both Model Armor template configurations, ADK callback signatures and their fixed execution order, confirmation state layout, audit log schema with partitioning, service sizing, Terraform resource inventory per module, dashboard and alert policies, evaluation record format, rollback procedures for five failure classes, and a contingency for T-1 if the probed MCP surface disagrees with §5.1. |
 | **1.12** | 2026-08-06 | C. Yang (design review) | **Template conformance pass.** Checked the document against every instruction in `SDD_TEMPLATE.md` rather than against its section numbering. Four requirements were named by the template and absent here: §4 asks for **network isolation** (added §4.9, covering ingress, egress, the decision not to apply VPC-SC in MVP 1, and transit/rest encryption); §6 names **search storage** as a cost driver (the model priced queries but not index storage, corpus storage, Artifact Registry, or the Cloud Run UI itself — total corrected $\$160.18 \to \$178.66$, and a cost-structure ranking added); §7 asks for **deliverables** (added §7.5 with five milestones, their entry dependencies, deliverable artefacts, and the external dependencies the delivery team does not own); §1.3 asks for **hosting environments** (added a per-component hosting table). Rewrote §1.1, which described the challenge and the solution but never stated measurable business goals — now G-1 to G-6, each with a target, a BRD source and a §9.2 metric. |
-| **1.13** | 2026-08-06 | C. Yang (design review) | **Alignment with the implemented evaluation suite.** §9, Appendix C.10 and Appendix B.1 described a five-dataset `.jsonl` framework with a bespoke `run_eval.py` runner. That framework was never built, and the suite that exists in the repository uses the `agents-cli` dataset schema, two JSON datasets, and 11 metrics of which 5 are custom. A design document that describes a parallel artefact is worse than one that omits the topic, because an implementer follows it. Rewrote §9.1 to list the real files, added a column to §9.2 naming the artefact that produces each number, corrected §9.4 to the real commands, replaced C.10 with the actual record format, and added `policies/` and `tests/eval/` to B.1. Also corrected §9.3: it claimed the judge is a different model family from the agent, which is not true of `gemini-2.5-pro`; the same-family limitation is now stated with the human double-scoring control that compensates for it. Added the `policies/` corpus itself as §9.1's first row — evaluation ground truth that traces to no document rewards the behaviour `NFR-3.1` forbids. |
+| **1.13** | 2026-08-06 | C. Yang (design review) | **Alignment with the implemented evaluation suite.** §9, Appendix C.10 and Appendix B.1 described a five-dataset `.jsonl` framework with a bespoke `run_eval.py` runner. That framework was never built, and the suite that exists in the repository uses the `agents-cli` dataset schema, two JSON datasets, and 11 metrics of which 5 are custom. A design document that describes a parallel artefact is worse than one that omits the topic, because an implementer follows it. Rewrote §9.1 to list the real files, added a column to §9.2 naming the artefact that produces each number, corrected §9.4 to the real commands, replaced C.10 with the actual record format, and added the corpus and `tests/eval/` to B.1. Also corrected §9.3: it claimed the judge is a different model family from the agent, which is not true of `gemini-2.5-pro`; the same-family limitation is now stated with the human double-scoring control that compensates for it. Added the corpus itself as §9.1's first row — evaluation ground truth that traces to no document rewards the behaviour `NFR-3.1` forbids. |
+| **1.14** | 2026-08-06 | C. Yang (design review) | **Corpus correction.** §9 was written against a six-document corpus authored for this project. The repository already contains the real one: `knowledge/`, the Altostrat Singapore Employee Policy Handbook in Open Knowledge Format, 188 files across 33 sections, transcribed verbatim from the source PDF. Authoring a parallel corpus was the wrong call — a synthetic corpus makes the accuracy figure a measurement against my own invention. Deleted it and rebuilt every expected answer against the handbook, which changed most of the facts under test: bereavement leave is 4 weeks rather than 5 days, sick leave is 14 days plus 46 discretionary hospitalization days, vacation accrues 20/21/22 days by service band. The suite is now 52 single-turn and 8 multi-turn cases over 25 requirement tags. Also fixed a `FR-4.3` violation in the reference implementation: the transition table permitted `New -> Closed`, which is the one transition the requirement names, and rejected `New -> Resolved`, which §5.1.3 requires as the abandon path. Recorded two corrupted corpus sections (`13.3`, `14.4`) as a content-owner defect rather than guessing the intended thresholds. |
 
 ---
 
@@ -1080,7 +1081,7 @@ terraform/
 | **M1 — Foundation complete** | 2026-08-12 | Argolis project with billing; IAP access to the mock enterprise host so an MCP token can be minted | `docs/mcp_probe_<date>.json`; `terraform/` applying cleanly in `dev`; populated Vertex AI Search datastore; `capability_manifest.yaml`; §5.1 reconciled against the probe (`D-15` closed) |
 | **M2 — Agent functional** | 2026-08-25 | M1 | `agent/` with all four callbacks; `UC-1.1`–`UC-1.3` passing end to end; `M-2`, `M-3`, `M-4`, `M-9`, `M-14` green; named Cloud Trace spans emitting |
 | **M3 — Orchestration + UI** | 2026-08-31 | M2 | `UC-2.1`–`UC-2.3` passing including partial-failure paths; `ui/` deployed behind IAP with SSE; DLQ worker; circuit breaker; schema-drift interceptor |
-| **M4 — Gates enforceable** | 2026-09-02 | M3 | CI pipeline per §7.2; `policies/` and both datasets committed; `agents-cli eval run` emitting the §9.2 metric table |
+| **M4 — Gates enforceable** | 2026-09-02 | M3 | CI pipeline per §7.2; `knowledge/` and both datasets committed; `agents-cli eval run` emitting the §9.2 metric table |
 | **M5 — Acceptance** | 2026-09-08 | M4 | Full §9.2 metric report; UAT-1 to UAT-4 sign-offs; dashboard and six alert policies live; rollback drill executed per §C.11; Definition of Done (§B.6) checked |
 
 ### **External dependencies not owned by the delivery team**
@@ -1153,17 +1154,17 @@ The suite lives in `tests/eval/` and uses the **`agents-cli` evaluation dataset 
 
 | Artefact | Contents | Owner | Refresh trigger |
 | :--- | :--- | :--- | :--- |
-| `policies/` | Six approved policy documents (HR-POL-001 … 006). **The only source of policy fact.** | HR content owner | Any policy change |
-| `tests/eval/datasets/eval-data.json` | 50 single-turn cases: 10 answerable policy, 4 **unanswerable**, 4 out-of-domain, 4 transaction, 6 guardrail, 20 security, 2 resilience | Mixed, per case tag | Corpus change or tool-contract change |
-| `tests/eval/datasets/eval-multi-turn.json` | 8 multi-turn cases covering `UC-2.1`–`UC-2.3`, multi-turn PTO, ticket lifecycle, balance recovery, and a confirmation-payload swap | Agent lead | Flow change |
+| `knowledge/` | The Altostrat Singapore Employee Policy Handbook & Conduct Guidelines in Open Knowledge Format, 188 files across 33 sections. **The only source of policy fact.** | HR content owner | Any policy change |
+| `tests/eval/datasets/eval-data.json` | 52 single-turn cases: 12 answerable policy, 4 **unanswerable**, 4 out-of-domain, 4 transaction, 6 guardrail, 20 security, 2 resilience | Mixed, per case tag | Corpus change or tool-contract change |
+| `tests/eval/datasets/eval-multi-turn.json` | 8 multi-turn cases covering `UC-2.1`–`UC-2.3`, multi-turn PTO amendment, ticket lifecycle, balance-then-book, and a confirmation-payload swap | Agent lead | Flow change |
 | `tests/eval/eval_config.yaml` | 6 built-in + 5 custom metrics, judge configuration | Agent lead | Metric change |
-| `tests/eval/build_datasets.py` | **Generator.** Derives every expected answer from `policies/` and verifies every citation resolves before writing | Agent lead | — |
+| `tests/eval/build_datasets.py` | **Generator.** Derives every expected answer from `knowledge/` and verifies every citation resolves before writing | Agent lead | — |
 | `tests/eval/evaluation_report.md` | Design, coverage, scoring formulas, release gates | Agent lead | Every run |
 
 **Curation rules.**
 
-1. **Datasets are generated, not hand-edited.** `build_datasets.py` exits non-zero if any cited section does not exist in `policies/`, so an expected answer cannot drift out of the corpus silently. Editing the JSON by hand defeats this and is prohibited.
-2. **Ground truth traces to a document.** Every policy assertion in a `reference` appears verbatim in the cited section. This is the control that prevents the benchmark from rewarding a hallucination.
+1. **Datasets are generated, not hand-edited.** `build_datasets.py` exits non-zero if any cited document does not exist in `knowledge/`, so an expected answer cannot drift out of the corpus silently. Editing the JSON by hand defeats this and is prohibited.
+2. **Ground truth traces to a document.** Every policy assertion in a `reference` appears verbatim in the cited document; the 33 numeric and eligibility assertions were each checked against their source. This is the control that prevents the benchmark from rewarding a hallucination.
 3. **No `responses` block.** Cases carry `prompt`, `reference`, `rubric_groups` and `tags` only. A dataset shipping recorded model responses can produce a full score report without invoking the agent.
 4. **The 4 unanswerable cases are load-bearing.** An agent that never refuses still scores well on answerable questions, so without them `M-2` is unmeasurable. If the corpus later answers one of them, it moves to the answerable split and a new unanswerable case replaces it.
 5. **Every case is tagged** with the BRD requirements it exercises, so "which requirement has no test" is answerable by query rather than by reading.
@@ -1212,7 +1213,7 @@ Thresholds below are the contract. The **Implemented by** column names the artef
 ## **9.4. Continuous Evaluation**
 
 ```bash
-export POLICY_CORPUS_DIR="$(pwd)/policies"
+export POLICY_CORPUS_DIR="$(pwd)/knowledge"
 python3 tests/eval/build_datasets.py          # fails if a citation no longer resolves
 agents-cli eval run --dataset tests/eval/datasets/eval-data.json \
                     --config  tests/eval/eval_config.yaml
@@ -1220,7 +1221,7 @@ agents-cli eval run --dataset tests/eval/datasets/eval-multi-turn.json \
                     --config  tests/eval/eval_config.yaml
 ```
 
-* **Every pull request** runs `build_datasets.py` plus the single-turn suite. A PR that changes `policies/` without updating a dependent case fails at generation, before any model is called.
+* **Every pull request** runs `build_datasets.py` plus the single-turn suite. A PR that changes `knowledge/` without updating a dependent case fails at generation, before any model is called.
 * **Nightly on `main`** runs both suites and the trace assertions. A regression on any release-blocking metric opens a P1 automatically.
 * **Production sampling**: 1% of turns are replayed through the judge weekly, giving drift detection on `M-1`/`M-2` after a corpus or model change.
 
@@ -1348,14 +1349,11 @@ hr-agentic-assistant/
 │   ├── identity.py                   # IAP header -> employee_id (§3.6)
 │   └── static/                       # React bundle: message list, citation link,
 │                                     # ConfirmationCard, SafetyBlocked state
-├── policies/                        # the approved corpus, HR-POL-001..006 (§9.1)
-│   ├── leave-policy.md               # the ONLY source of policy fact
-│   ├── expense-and-equipment-policy.md
-│   ├── remote-work-policy.md
-│   ├── code-of-conduct.md
-│   ├── relocation-policy.md
-│   ├── it-support-policy.md
-│   └── README.md                     # ingestion + citation URI scheme
+├── knowledge/                       # the approved corpus (§9.1); OKF v0.1
+│   ├── index.md                      # section map, 33 sections
+│   ├── 19-sick-time-.../             # one directory per handbook section,
+│   ├── 20-vacation-leave-.../        # one file per subsection, verbatim text
+│   └── ...                           # the ONLY source of policy fact
 ├── tests/
 │   ├── eval/
 │   │   ├── build_datasets.py         # generator; fails if a citation is dead
@@ -1678,7 +1676,7 @@ Both datasets use the **`agents-cli` evaluation schema**, declared by `$schema` 
 
 ```json
 {
-  "eval_case_id": "pol_bereavement_days",
+  "eval_case_id": "pol_bereavement_allowance",
   "tags": ["UC-1.1", "FR-5.2", "FR-5.3", "NFR-3.1"],
   "prompt": {
     "role": "user",
@@ -1687,16 +1685,16 @@ Both datasets use the **`agents-cli` evaluation schema**, declared by `$schema` 
   "reference": {
     "response": {
       "role": "model",
-      "parts": [{"text": "Bereavement leave is paid and is granted in addition to your sick leave entitlement... 5 paid working days for an immediate family member... 3 paid working days for extended family... Source: gs://${PROJECT_ID}-hr-policies/leave-policy.md#4-bereavement-leave"}]
+      "parts": [{"text": "You can take up to 4 weeks of paid bereavement leave per event... on a standard 40-hour, 5-day week that is up to 20 work days... within 12 months of the death. Source: gs://${PROJECT_ID}-hr-policies/22-bereavement-leave-global/22.2-allowance-and-timelines.md"}]
     }
   },
   "rubric_groups": {
     "accuracy_rubrics": {
       "rubrics": [
-        {"rubric_id": "days_5_and_3",
-         "content": {"property": {"description": "States 5 paid days for immediate family and 3 for extended family."}}},
-        {"rubric_id": "additional_not_deducted",
-         "content": {"property": {"description": "States that bereavement leave is additional to sick leave and is not deducted from it."}}}
+        {"rubric_id": "four_weeks",
+         "content": {"property": {"description": "States 4 weeks, and 20 work days on a standard 5-day schedule."}}},
+        {"rubric_id": "twelve_months",
+         "content": {"property": {"description": "States the 12-month window from the death."}}}
       ]
     }
   }
@@ -1706,7 +1704,7 @@ Both datasets use the **`agents-cli` evaluation schema**, declared by `$schema` 
 Three properties of this format are load-bearing.
 
 * **`tags` carries the BRD requirement IDs**, which is what makes "which requirement has no test" a query rather than a reading exercise. Appendix A's verification column and this field must agree.
-* **`reference.response` is the expected answer, and every policy fact in it appears verbatim in `policies/`.** `tests/eval/build_datasets.py` exits non-zero if a cited section does not exist, so the expected answer cannot drift out of the corpus without CI noticing.
+* **`reference.response` is the expected answer, and every policy fact in it appears verbatim in `knowledge/`.** `tests/eval/build_datasets.py` exits non-zero if a cited document does not exist, so the expected answer cannot drift out of the corpus without CI noticing.
 * **There is no `responses` block.** A dataset that ships recorded model responses will produce a full score report without the agent ever being invoked, which is a scoring pipeline that cannot fail. Its absence is checked in review.
 
 Multi-turn cases in `eval-multi-turn.json` replace `prompt` with a `conversation` array of user turns and carry `rubric_groups` describing the required tool order, the confirmation point, and the partial-failure message ordering. Transaction cases additionally assert backend state by read-back rather than by inspecting the reply text; the read-back assertions live in `tests/test_tool_contracts.py`, not in the judge.
