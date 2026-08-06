@@ -67,6 +67,18 @@ class ServiceImmediatelyStateStore:
 _store = ServiceImmediatelyStateStore()
 
 
+def reset_state_for_testing() -> None:
+    """Restore the mock backend to its initial state.
+
+    The store is module-level, so every evaluation case that books leave or
+    raises a ticket changes what the next case sees. That makes a suite
+    order-dependent and its results irreproducible, which is worse than a low
+    score. Evaluation harnesses call this between cases.
+    """
+    global _store
+    _store = ServiceImmediatelyStateStore()
+
+
 def set_active_caller_context(employee_id: str):
     """Sets active caller context for multi-tenant sessions."""
     _store.current_caller_id = employee_id

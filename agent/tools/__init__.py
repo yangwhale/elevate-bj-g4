@@ -1,5 +1,6 @@
 """Tools package for Project Elevate Agent."""
 
+from .clock_tool import get_today
 from .rag_tool import vertex_search_policies
 from .serviceimmediately_tool import (
     add_ticket_comment,
@@ -18,6 +19,7 @@ from .workweek_tool import (
 )
 
 ALL_TOOLS = [
+    get_today,
     # WorkWeek HCM tools
     get_current_employee_id,
     get_employee_balances,
@@ -49,4 +51,5 @@ __all__ = [
     "add_ticket_comment",
     "update_ticket_status",
     "vertex_search_policies",
+    "get_today",
 ]

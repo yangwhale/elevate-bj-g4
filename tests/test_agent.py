@@ -377,7 +377,10 @@ def test_root_agent_configuration():
     """Verify ADK Supervisor root agent configuration, tools, and active callbacks."""
     assert root_agent is not None
     assert root_agent.name == "elevate_supervisor_agent"
-    assert len(root_agent.tools) == 12
+    # 12 business tools plus get_today, which exists because the model has no
+    # reliable notion of the current date and wrote a leave request into 2024.
+    assert len(root_agent.tools) == 13
+    assert "get_today" in {getattr(t, "__name__", "") for t in root_agent.tools}
     assert root_agent.before_agent_callback is not None
     assert root_agent.after_agent_callback is not None
 

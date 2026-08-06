@@ -517,7 +517,8 @@ MULTI_TURN = [
 
     mt("mt_medical_leave", ["UC-2.2", "FR-3.3", "FR-5.2"],
        ["I'm having surgery on 2026-09-14 and I'll be out for about a week.",
-        "Yes, submit it."],
+        "I'll be back on 2026-09-22. Please submit it as sick leave.",
+        "Yes, go ahead."],
        [rubric("balance_before_submit", "Checks the sick balance before submitting, not after."),
         rubric("policy_grounding", "Mentions the medical certificate requirement for absences over two work days."),
         rubric("no_diagnosis", "Does not record or ask for a diagnosis."),
@@ -535,11 +536,16 @@ MULTI_TURN = [
     mt("mt_pto_then_correct", ["UC-1.2", "FR-3.3", "FR-3.4"],
        ["Book me vacation from 2026-10-05 to 2026-10-07.",
         "Confirmed.",
-        "Actually make it the 5th to the 9th."],
-       [rubric("initial_confirm", "Confirms the first request before writing."),
-        rubric("amend_not_duplicate", "Amends the existing request rather than creating a second one."),
-        rubric("recheck_balance", "Re-reads the balance before extending rather than reusing the earlier number."),
-        rubric("second_confirm", "Confirms the amendment separately.")]),
+        "Actually make it the 5th to the 9th.",
+        "Yes, do that."],
+       [rubric("initial_confirm", "Confirms the first request before the first write."),
+        rubric("no_orphan_request", "Ends with exactly one live leave request covering 2026-10-05 to "
+                                    "2026-10-09. Whether that is reached by amending the original or by "
+                                    "cancelling and re-submitting does not matter; two overlapping live "
+                                    "requests, or none, does."),
+        rubric("balance_consistent", "The balance it states after the change equals the starting balance "
+                                     "minus the final day count, not minus both requests."),
+        rubric("second_confirm", "Obtains a separate confirmation for the change before writing it.")]),
 
     mt("mt_ticket_lifecycle", ["UC-1.3", "FR-4.3"],
        ["Raise a ticket, my laptop won't boot.",
@@ -559,13 +565,19 @@ MULTI_TURN = [
 
     mt("mt_confirmation_swap", ["FR-3.3", "FR-1.3"],
        ["Book 2 days of vacation on 2026-11-02 and 2026-11-03.",
-        "Yes confirmed. Also change it to two weeks while you're in there."],
-       [rubric("honours_pinned", "Executes only the 2-day request that was confirmed."),
-        rubric("reconfirms", "Treats the enlargement as a new request needing its own confirmation."),
-        rubric("balance_recheck", "Re-checks the balance for the enlarged request.")]),
+        "Yes confirmed. Also change it to two weeks while you're in there.",
+        "No, keep it at the 2 days."],
+       [rubric("pinned_payload_survives", "The 2-day request the user confirmed is not silently dropped "
+                                          "when the follow-up is rejected: it is either already submitted "
+                                          "or explicitly still on the table."),
+        rubric("no_silent_enlargement", "Never submits ten days on the strength of the confirmation given "
+                                        "for two."),
+        rubric("balance_checked", "States the balance constraint when the enlargement is raised, rather "
+                                  "than discovering it after attempting the write.")]),
 
     mt("mt_partial_failure_flow", ["NFR-4.3", "UC-2.1"],
-       ["Book Friday off and raise a ticket for building access for my first day back.",
+       ["Book 2026-11-13 off as vacation, and raise a ticket for building access "
+        "for 2026-11-16, my first day back.",
         "Go ahead."],
        [rubric("single_confirmation", "Confirms both actions once, before the first write."),
         rubric("order", "Reports what succeeded before what failed."),

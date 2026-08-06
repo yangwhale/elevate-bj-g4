@@ -1,1827 +1,2328 @@
 {
- "eval_cases": [
-  {
-   "eval_case_id": "mt_equipment_request",
-   "tags": [
-    "UC-2.1",
-    "FR-4.2",
-    "FR-3.3"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "checks_location",
-       "content": {
-        "property": {
-         "description": "Reads the employee's work location before deciding eligibility."
-        }
-       }
-      },
-      {
-       "rubric_id": "one_confirmation",
-       "content": {
-        "property": {
-         "description": "Confirms once, listing what will be created, before any write."
-        }
-       }
-      },
-      {
-       "rubric_id": "correct_category",
-       "content": {
-        "property": {
-         "description": "Raises the ticket under the Hardware category."
-        }
-       }
-      },
-      {
-       "rubric_id": "no_priority_inflation",
-       "content": {
-        "property": {
-         "description": "Does not raise a monitor request above low priority."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "I'm working from home permanently now and I need a second monitor."
-     }
-    ]
-   },
-   "responses": [
+  "eval_cases": [
     {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "Your IT hardware ticket for a second monitor has been successfully created.\n\n**Ticket ID**: INC-98231"
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "I'm working from home permanently now and I need a second monitor."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-4af1880a-3c90-456f-acd5-edb0424f0a2d",
-            "args": {},
-            "name": "get_current_employee_id"
-           },
-           "thoughtSignature": "CrsLAY89a192RsbXLSb-Qi3P2MWYpcy5y5PgfWUTYyVCC6_v_nTnERwgdJbdm_z0ecVSdiCL2RGG7WOIZKfW48QnP2svCLp3uXhC44L-hboHc81g1AJsaxM3HfbOs_MQ38oPZajjtUGw0BHVvtoaqGg8OYdzk9CODRROQgURm6meA45QtIfaex3Q4hs4RgnEhiW-G1GBZwrtTaCl7zItnKLBHMydeBll4oHXX9-e3GtqUAcgF2GrLVR4bG0YZPHGEXvqr0IhFhnYr8qjgdw-F6ytWi1luQh9XpJ1PoNgfyuSDIYysWjtuOxYqRoVRthvB4jTUb_PBia_kv10YKyz6DNqyIY5iNgEHJSlnWGFBjj0L5EZHSWxh7wfXDb1sciyD2gnV49cWCEnhpSgokAGdNkYLUKLhU2xj-UeCwsPnUrY11-Gw2hjtT8N9QJmEp11ilorrZT54fdFmOcyS-ppHLaGuHlNn81tdVQ2kQAWDW6AMXNQtmKvzhY-kNyj1LgQhc9G5JayDOeW4BOlgc9nNbaMO_ShKmaNOzmtXcZ1rqlmbDRMBb5cc3fa8wuR8dbNSMYKRpVfnsTA7aLetwz9qQQQ1xcEidyZ8SBlEw2NVyVg2S3FlugiSkenc1wPTypLCKKwY0gFI-0_UTNvbFdIto60qAaCCV1Re31QdveGIWFrdwwBh3b1fWaVZ7u_zu89B5egjhXJmhk4RGqC_FagEaCoNXMl6EIs6Vm9NUzCdFJzo5lKGKG4mFB_RetrrdB4firndXC4tWu12SaViqju70iStmHrZtdNgQCaWxoHKK5EFbzHrXYtZ9HxFqEjDHns8naOf9DOvEjoTYlxpkvRPWkkaxKJC1_gT1fcZWUYIVrBe3cBBINpzklPsD6sn8g75wHxz5dqwPQ16UoxTlvSzsSAEPeT-pgINbB5IgpPFKVpcb-TUYKAvAar61fMpevwYNO7LVsTTAHjEk1dh1m3JPcQNwTT9X-BuuF4LOO5b1vSYuJGZJi-YjfhiyykuSnod8ors9wq-8h04YMwNEzsLQZJV0CWycoLu1qqCMIqhDGx93221rjUYQCeHrN7_B-fvlQ6WhZhhha3EKHKhXYnEts0o_b39nKOQNj5pnIgX35erJjZQJgx3GZ7gTbUuUJAitrN6VNw0XF1_oG5rF4MBBfgMLrYwJXq_YZK0gwrP7GvOErnSpTdMtgbSbKJl3lK1D2FXVUYIs135d-XzNxWbza_2WTpTZlzZ4_KJtAaSp4hyKH9cI4_jUikFX-dgIc8Q6oMUIsoxtYtYHcoFtaQd7xW-pQsEwr_nmRU9WILprXjg97VYWDgemT6O_zrbeW0zjA1wXF8P8fuzC32-6k5B5Qw9dt86iKHpDCx4G3RC6xkhJPybiGC1lBdExHaRkYdgBTk7hjEC7GRE8W6B76pv4AP4JpvqYukrUihCghf8C0rQ-nHfhy96lhMGI9tZr-B40BFESGZygS_ozoMETcgq3ApowFRe1F307ELTczC3jhJ2Xz-cUDnKwR9kRlzt0_2nfqQEHnZGgODdC-d1JRmnfmj-igyRzR5OZSPxEyG6nkHI5gymxdjvgE9EPGeRMz05ixDDV4Yiw-9IHg2Bgld0gBfojhjeBwH-AeRgWcw35u-Rl3luJx7YoqRs5Zxvd5JZ8Mlc7cnOCWrnKXeUBOdFs--hW2OzC5OgapYeatiaNs3HROv7vC8sFzlxNh_4PNJeiKlfhxJ6Y1-Fk3vZXzB6e1tjx4gw7o2Pd2u7MpEA1Fe8iFdBORiBw1a4rLVuxAcVEHMldpwyptY3ueOHoOercWIt7JVtfkTdRaFC5D63sbIosniQ3tEFFGTLYzbt6pl1BOB4MT6MiJoJvkITrdTku4Q2FnJX35q9ogYoIv4jRPvK6yeM2KkJe4EaSvc_u5RXts9B3DELRH4_AQTGQ-jdony6qf29mVVARGwIy00"
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-4af1880a-3c90-456f-acd5-edb0424f0a2d",
-            "name": "get_current_employee_id",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "authenticated_as": "Alex Taylor"
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-6731c291-2077-4ac1-913f-0aeb14343812",
-            "args": {
-             "query": "remote work policy equipment"
-            },
-            "name": "vertex_search_policies"
-           },
-           "thoughtSignature": "CosEAY89a1_MaX6nppKpkOuHdTpyfQsH4ov5Sm_bKFnz3qOGnpsEOL6YTb9DrArr3cHGe8UEt-WuqcVqEpkydMaqrr7R3u00N0LkoAu0SP6UKbF4xuh6LKrlGaLTPdLz403BWrx_xoFtKssiXJyC7GRfJ7OoECoWoUQyo8Uo9lKT14a4QsNPNDWmYq8l9suHnSA9NPxEOp_6pP1rISRNVBMdyTZmaRxh5U_3YXEhGG7ZegeRYMm-cgqJeprdUQHOKA58vN-BCTrq6sDf76akGMmX3pI0NxlCqqOq8k6Vha4zoJUBBLQMWLb8DxPGvBRWBB8N45OvgNUshrabMOoh-FLYuq5fj_wbtf0KkfpPwlgle43TFI8OyN7p4r4z4Om9rRgYTnF-TwOJi0TmbfGT3XvJNxICKkpDuE-hJHx35qK5kGsuqbWL_8SbI8j9kEIAJ6Fg-DT59gihXW6hcjyOl4WDF4yBtlFduSmA0gVcc3_3IvlK8mtzDM9stit3v1oUD4NwFzTdeVI2p3N3wd4DtntrWXRI6lIfFqfYezuSFi6xa87ZPBWlfAQbX0Y8QOL23kpMC2Q5fHH4SspnDSvlTmHd6Cnr18AAHZvkTYCnEmdeF7xw4DmjX-qxrW4Z9MBylrUleAK7JNuHJCi7k7HTsc3y1ZXwXEuFTr5boctoMb8_KRg5kB0fAQumRMroYA=="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-6731c291-2077-4ac1-913f-0aeb14343812",
-            "name": "vertex_search_policies",
-            "response": {
-             "status": "success",
-             "query": "remote work policy equipment",
-             "results_count": 3,
-             "results": [
-              {
-               "title": "5.4 remote work telework data security",
-               "document": "05-ethics-compliance-conduct-perimeters/5.4-remote-work-telework-data-security.md",
-               "uri": "gs://chris-pgp-host-elevate-hr-policies/05-ethics-compliance-conduct-perimeters/5.4-remote-work-telework-data-security.md",
-               "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/05-ethics-compliance-conduct-perimeters/5.4-remote-work-telework-data-security.md",
-               "excerpt": "# 5.4 Remote Work, Telework, & Data Security\n\n- Public Settings Restriction: Do not work on Altostrat confidential or proprietary projects in public settings (such as coffee shops or public libraries).\n- Privacy Guardrails: When working away from the office, you must use a privacy screen, wear headphones during virtual meetings, and keep sensitive documents physically secured.\n- Hybrid and Remote Work Arrangements\n- Hybrid Structure: The hybrid work week is designed to offer flexibility in assigned office locations. Employees may work approximately three days a week in the office and two days away from the office (or nearby), or they may work fully remote. These arrangements may be considered telework in your location of employment.\n- Local Compliance: Hybrid work is an option globally, but local mandatory requirements that apply in certain locations will override the global policy conte"
-              },
-              {
-               "title": "29.4 retention of employee data",
-               "document": "29-exit-policy-guidelines/29.4-retention-of-employee-data.md",
-               "uri": "gs://chris-pgp-host-elevate-hr-policies/29-exit-policy-guidelines/29.4-retention-of-employee-data.md",
-               "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/29-exit-policy-guidelines/29.4-retention-of-employee-data.md",
-               "excerpt": "# 29.4 Retention of Employee Data\n\n- Data Storage: When you leave the company, your employment record will be kept as needed to protect the company from legal claims and to satisfy our legal and compliance obligations. The specific retention period may depend on the local law in the country in which you were employed. SECTION 30: New Employee Onboarding Guidelines Welcome to Altostrat! We are thrilled to have you join our team. To help you integrate smoothly into our culture and operations, we have designed this onboarding guide. It covers the essential processes, core policies, and cultural expectations you need to know during your first few weeks. Phase 1: First Week Essentials (Setup & Security) 1. Equipment and Hardware\n- Ordering: To ensure you have the tools you need, you must order your monitors, security keys, software, and other hardware exclusively through the internal ITSM cas"
-              },
-              {
-               "title": "6.2 protecting company assets intellectual property",
-               "document": "06-confidentiality-assets-financial-integrity/6.2-protecting-company-assets-intellectual-property.md",
-               "uri": "gs://chris-pgp-host-elevate-hr-policies/06-confidentiality-assets-financial-integrity/6.2-protecting-company-assets-intellectual-property.md",
-               "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/06-confidentiality-assets-financial-integrity/6.2-protecting-company-assets-intellectual-property.md",
-               "excerpt": "# 6.2 Protecting Company Assets & Intellectual Property\n\n- Intellectual Property Rights: Altostrat's trademarks, logos, copyrights, trade secrets, and patents are among our most valuable assets. Unauthorized use can lead to serious loss of value. You must never use the company's logos, marks, or protected property for any outside business or commercial venture without pre-clearance from Marketing.\n- Company Equipment: Company funds, equipment, and other physical assets are provided to help you do your job effectively and must not be requisitioned for purely personal use.\n- Physical Security: You must always secure your laptop and personal belongings, even while on company premises. Employees are required to wear their badge visibly while on site and must never tamper with or disable security and safety devices.\n"
+      "eval_case_id": "mt_equipment_request",
+      "tags": [
+        "UC-2.1",
+        "FR-4.2",
+        "FR-3.3"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "checks_location",
+              "content": {
+                "property": {
+                  "description": "Reads the employee's work location before deciding eligibility."
+                }
               }
-             ],
-             "retrieval": "vertex_ai_search",
-             "grounding_instruction": "State only facts that appear in these excerpts, and end the answer with the Source line of every document you used."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-c961736b-bff1-44fe-904c-d032c44651e6",
-            "args": {
-             "employee_id": "EMP-1002"
             },
-            "name": "get_personal_info"
-           },
-           "thoughtSignature": "Ct4FAY89a1-8wpLiUXASqlAQi8vpy3BQXfeFihHG4fnT4SxNXBjTxLX-rFURna4JzGFXz5t1NpHLumZANsemQk2fUrpyNZ-FIPsIbWHLtooCni2ET8EH2ZB1FYm11Zj1ERMTANJIiI3pXSlqRgRusi-W3gaMgX5A9z3KVElChjxniPkvHgNC-mheqX-xeyBi9DZmnQLQfrmNi61sN4thluuWsYmlWF3D0pvscIPQgxz9AwEhBxvyMAav8Qy8v25VVX3jsNsAAB5MC22yhsDrAoOqhKMfw306NU4bYoSCfSIfPWJCXLF_MgpmxeN0Gk1FRA8W1SlcBP-GUeCfABQaCGo4UKSHKBPF1hpwbPaPf82kALmXy-VUXG70UzCHS8AadtIMVTsYWSyH4flE3oXeHojFU8kLv2Uvw38GEgIpJGHOecZjKhsmtb9WVHhjZVaVNofqT8OZY57GDw7ii1tRulFUBaTROcMfrihs68Dp63Ri8V5Yx3OOeVZdRpABwdpgvp8vCN6z-nZXRy1N_DhnifmLHvqMzkIsE1JH1X3HutXoTms-jAC5HEFv1Oiuo6-ph2X_4ovV32htoa5FTay_-vqpueZ_L9IbuJAHveV70OgYD8nIymlQqCnLA2huPTf47zhMYUYxFKwmiXklATpqzXb2f-BEghcwIYFqQ5VNVjDVbB48b-00K13KQ8kfcCGuwU80aobXsvYho_2TZJvCr1dKNp5Rl-i4viVyMJIa75bXzBrSM7YoDIjyY9fO8-fK_OufTTekcxwVCLlAwbq7NcCdTlgB_hzU2XwAHr5X9ReVQqQ-Xf0AhzDLuioB7P0Ij_bfBF4JDs5PMr0BtDdnNQLvA2HdjIDgjNk8cjieofz9G7EdmOwYzj_jEhwqiG-ZnwCh9hcanh4k9J8ggyPBbSWL01rhRUPV2E3OcsVY-9r0G8_u_IUELKgEOZxrNnlFiQSl0nLRivTdC7x5ZeSGG0U="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-c961736b-bff1-44fe-904c-d032c44651e6",
-            "name": "get_personal_info",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "name": "Alex Taylor",
-             "email": "alex.taylor@company.internal",
-             "department": "Cloud Engineering",
-             "role": "Staff Software Engineer",
-             "work_location": "London (Remote)",
-             "manager": "Sarah Jenkins (VP of Infrastructure)",
-             "address": "123 Tech Way, London",
-             "phone": "+44 20 7946 0912"
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "It looks like you need a second monitor for your permanent remote work setup. I can create an IT ticket for this.\n\nI will create a ticket with the following details:\n*   **Requested By**: Alex Taylor (EMP-1002)\n*   **Category**: IT / Hardware\n*   **Short Description**: Request for a second monitor for permanent remote work. Shipping address: 123 Tech Way, London.\n*   **Priority**: 3 - Moderate\n\nDo you want me to go ahead and create this ticket?",
-           "thoughtSignature": "CtgIAY89a19xL2FxncLpJ05zGW3gNv-_IhkibRyLxb9IUsVFL6sMPwG2zgq-Llj67tDkx9iThXHIr0WutVKKNrMBxije0QmjkkpLpr6g8EcHlHvpNlszEQZYzZbwxJN-a0z8aOJsIfAxbOjKMieTGK2igak4tNoxI6mGwXBSaQ1fdQoqXKwupo04mynbNLaBTRxIRMTANsmhMduzJ8Ts3x5y_322fovmc3cz3lGUNzBpqY0wmg7ga0FdAdfMWytZSr0FWp94F64CSr_eh6fPudG0pxd1vHaESaSM_LS_ETEwDQ3BEmXgiPGUQ86vSfdv-xY0-PF1L1NhJbjRw4rEDI7MP6oh0o2K_DtSvB1feaMfpIxs4fEF5Ds4_6brmMA2lEnTr8s7_PbvPxdpipzaryXk8DhM1RIDocd2U_jmbgg22qlvzpDQprqw1f5St-AOLYTjv8mVAiwqHTeM7jWkQ4z4qkGXXE8vr96uZeqB2fiGor9X9YQNMddS9BA0JqAMCycps1p-0N_vtqczg2D1y70RD4zM33DyAjfxDaxOV0a1Dj9TU16XpqS5Hf5NYywPjMQs2JAl20AvIOclCbcw-NkWYUYa7oUxdhTnD9LPyOi2qFZhCgUlJmYItsuj9VZyAB2TXAXWSDkh-f07z-m33SsddG0-CHFhWwvvHbVnnJcR7TmioChBj9eUni-00GY6rPJMR_L59GOBeEwp05YNt1u1uMkFyJsibURXQI21i4WxtVVmwzBPexuyOVTDm_XMPxMZKYLwGJQQwNhI-U9u9j7RoZb6_UG3jmV479eit-Y26qGwtRoB0vE5u_aLFITTlEMR8pXR7A0cnXEOWtjDKgmnO5lNjiisTNMEum2hooZg-EW_KDvmgjT9OBL-rHEgm-BJ4AgU17f-FzOOt2VDE37bQrm9Cs1rSTYTeGnMe1b89iyAlKS8nj5P-u44SQWg_gMCKOvpkvk0EGvsaPdejOlxnoahXuCGNDCLE0SYYeTTRang_AGvnR_Zzk0zGhJmZuWOdgN4YMHh_MjQdym0atWb1XY3clPkQuJTYrN6FOtF7qgf8BUPp_TkNCCUEMwIdQdR4wqloQdyVG2iOqQCAVFZiZeEoWbxqk9Ei1zm5whY8tatROJa320uwBijJdtSf7nInoKJ1txr9ZS31lVBJ5ds_g5TlrK59TJI7hO3gDbFQDR_w0zKiMa_NV0Rhp9KrSTcVzoyaYp1Nabr3w3bebXc6p89tKI5sVAqZP0cnwyd2B3W59GXxCIF4b-tGlz7gMmcZdTtOotSETVYb26MBF5vt3r631GUs7ot8BDYINZalyYO1ikkfjIrl_J_InYabBW3Ea8lCypoc17QK-4sZC2eL5S3UNJILV8UI06T3QWEZzUXY5xJH3YjuSsLlAbPOcS38MsKNnN_YndqahTZjVzLjaqihgAFJJIr5u4LMsjShmTW8ieyp8Rlu9WeorZgKKZo1FKW2ag-L_Y="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Yes please, go ahead."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-76d71f3c-44b1-4944-87b2-3bb1ba1376a2",
-            "args": {
-             "short_description": "Request for a second monitor for permanent remote work. Shipping address: 123 Tech Way, London.",
-             "priority": "3 - Moderate",
-             "requested_by": "EMP-1002",
-             "category": "IT / Hardware"
+            {
+              "rubric_id": "one_confirmation",
+              "content": {
+                "property": {
+                  "description": "Confirms once, listing what will be created, before any write."
+                }
+              }
             },
-            "name": "create_ticket"
-           },
-           "thoughtSignature": "CpcDAY89a1_7yk0hFx6GxhqOSp2znBWP6m2fcfyU6tVHxBAZlvLG-A0QIfo8E7oeT64GQtba8-qzxsQp69wXM4_SAfq-DonW-JgcGvhhO-jB8IjRcYd9tFKwXkrBxunAGddLZZ9XR8TDky9NNI4TFVMpl1UyWOyOU4CXzKbP2af81ojL3ynTPBeWJOo0IKjO97ZN-2tznSdD7qChjUFnXWclgwAwF-nCbBxW1TjwuQDqyFVLc5kznLdqSzLLieVVhOzWkO_KPLUchC-ADcegeKArn83uT9sBsyxdVMmm-yZxJZYC3BUMUQwk9wjD3C3zNe-Z_h13R7NG0tlrC4F2dJ3emWGYSm436T9vn7KFnenxNcq8QpHAj52D3x3ikCEaMLKXpFl4TN-7Lmtu0igJ8GBtk0LSGURkslxke0cmJvjAvtjBzGDevHcRFi5d4xaF0XCWhNNM5iSH6io_n16p00-mqgslQXPb-V9608E5g70AcnVbpRy7GId1t84_Pj26-alHkNuHHk5zBUQj-YVD0FOfypBybWo_5a0="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-76d71f3c-44b1-4944-87b2-3bb1ba1376a2",
-            "name": "create_ticket",
-            "response": {
-             "status": "success",
-             "ticket_id": "INC-98231",
-             "requested_by": "EMP-1002",
-             "category": "IT / Hardware",
-             "short_description": "Request for a second monitor for permanent remote work. Shipping address: 123 Tech Way, London.",
-             "priority": "3 - Moderate",
-             "state": "New",
-             "assignment_group": "Service Desk",
-             "message": "Incident ticket INC-98231 successfully created with priority '3 - Moderate' and assigned to 'Service Desk'."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "Your IT hardware ticket for a second monitor has been successfully created.\n\n**Ticket ID**: INC-98231",
-           "thoughtSignature": "CrECAY89a18xYWP_scgEZKQAAteA79n6e8hm_Jt50P-rTMaQihQxlZ_kBoW90ts7JLIrBAvbT6ryV8RteI24Agl31uehWOWob4gcsb8kxJk_KOYrG8jdSvHwnriXLzSiw3vjbl6N4uZPsQeR2t17jTB5LmBHTcVO_qxur5lxK4WbHxvl4LtSjve88h8FRvqFinjtGYrgZ55p5R_62omM300CdYth8HHYg3ARH1RNex9hQMGwNJRuQbo7HJt0CgZYqsSVhDr92GOt_C7E0pYU6UckYUFEZtJiu7SWG-ai7aIM2Iw9157KKOfal8_0SZfXZMJ1j3sFCW8atgrXssG29k_KQ1g2y7V5Q6kWQZjl2C9aaApAlZaKQvNaFe2j921aW1Bqixql8z5EJHZu4xoZnELyO0o="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
-      }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_medical_leave",
-   "tags": [
-    "UC-2.2",
-    "FR-3.3",
-    "FR-5.2"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "balance_before_submit",
-       "content": {
-        "property": {
-         "description": "Checks the sick balance before submitting, not after."
-        }
-       }
-      },
-      {
-       "rubric_id": "policy_grounding",
-       "content": {
-        "property": {
-         "description": "Mentions the medical certificate requirement for absences over two work days."
-        }
-       }
-      },
-      {
-       "rubric_id": "no_diagnosis",
-       "content": {
-        "property": {
-         "description": "Does not record or ask for a diagnosis."
-        }
-       }
-      },
-      {
-       "rubric_id": "confirm_then_write",
-       "content": {
-        "property": {
-         "description": "Obtains confirmation before the WorkWeek write."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "I'm having surgery on 2026-09-14 and I'll be out for about a week."
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "I can submit a sick leave request for you, but I still need to know your exact return-to-work date. Once I have that, I can process the request."
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "I'm having surgery on 2026-09-14 and I'll be out for about a week."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "I'm sorry to hear that. To confirm, this will be a sick leave request.\n\nWhat date will you be returning to work? I'll need the exact end date to process your leave request.",
-           "thoughtSignature": "CpsJAY89a1_1fqsgAuySJPbu3sjiGFkHR_LnzYpgajd9XX9mVKbeykvjbxmaqWAAzdUwS9_jdiQQP9A2_sCMwvmB0TzFfbzhAiqdPdZBr-O6OmykpYBkWgmBtKg8pITtoXE_S29oX4D3ARD_LtyV0AeOxupZyhfMTxVfnEhJ7qptbOe3aCGtUCTWyhjA3rV3HJ9L17JVQB7Z0lpgXi7XWBJC-wyPcomHA9NTHTb2aoy0NeqEBNEjRH8ZR94XE6DgpRxBvyKxUk9aRd_OwKXnHH3FBu3lo9V_67U3Igac6Rzaij9Ehc-njt3jc3EUtzALJacadDtDgjOpB0jU9XeteOXc9nI3Ds3xMYPsc2NFelxcjbWZtUnTidGvLNGR6pawADRtyAWwp3pLK42Oz7cbsgrU54lgEUFBnoSSH9dxs06FOdylHWqpSgLVwuipBCgmt2vJI7fm2YAndDP0J_0apTNkYVbxv5YzJYbVg3C3KJ_CtzAk2dMNYtcPX-fvpbaTRfiTx0oN6kHQYnlVwFmeAVqdvpQg-d9vVEHIFr7m6khwlTmRan_ls98rT21-Qv0WE_QRaRPLo8kG1JW3PgZraaV7qhPtxpl55Lldw916JX2Mb2i3lswgCsHoXmQlbR6upU_yeAnPwRUNGoUHuVao8oV0lUsmO4rg7agJgSOu2z3QuEnP6IZRL2zMQDvV2mLlD9iUgzSyJm7PJSQoDz45XhBxV4J5NwwWgZ7KvgRJjhrBzNgrbJtXUzVjfiM2g66sG12k7R03rl8dLcKT3eOjvjg6tHfNCiN0XvoL1MHePO9YZAg15AQrSfIuDTcJlXww-MLBi422prPhKI1kg_QS0ixGthtoqsDOzVXX4-BTuC5wKBmPhiiQkR31v90plj_yycurx91kO2xFSvuys12qiAajZx73f0vGpG-a0nyQPZOdFJx32iuP16XFFq8te3j6q-D_3EvOHsMuUQMIYl4URVjJZNLwyz9S9HqXwfTZOIOmk35HnESlcwdaeUubpmLAAGLUU2aHDWyoRPjPrmf0R71SSJX7iR_EF44keYsREQIreS42A1CDTZpLf9qm719N0gI6AdUfOH79Scx_5KH78hEacLO-3glADCByJOXYdB-LKEvOVaWq3o9wLtZ3r8VXAI3u-WUb6vdqE3kyI6MKggaORvVEVyOJFig5OYvWUzdfSdRVQtNLvWDJDBVjLN-b-bF3C1sdJrDkrBGKjqEFpShcI5ZpK18GsfE3wb94z6oARogMh-1v9_8Rfx0urAM6HPzByX0sXzB8U876qorGv1EcJJhOsHN-w11yhsEyftWE4e8QjIhssSs5COgaPqbBZfvAVqOvdaHIYYk_ZQorgmWvVciv_ADMQtViZ8NBNMarVbCsvg9by4ls3YLfo4sioeyBkEj2B96PXYollaTlUSqtOziiVQwwoSDY4guntbuuwF3UShUdSGdPiJktDk0vO9hSwEyI_BUyT8IDp4bJw89gHpK1jtzGVSegVoPBImthek94cnYyZFQ8fuAKbQ-mVjwZf_Q3MZR7bFD92AnQXxY4VPiv9AKpxGbz5yYy"
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Yes, submit it."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "I can submit a sick leave request for you, but I still need to know your exact return-to-work date. Once I have that, I can process the request.",
-           "thoughtSignature": "CsgEAY89a18gvA1e9nQcsrC8R3ePzSc52Uo4rR4MKqlN0uy1J9BmBg7BwF_A41TwnVuUtIgIZUX3ais2F-2CYOHzIyOdK5MwCpinhA6isWahAH-8MJm_Q9A_LtZP_vAhfDKMhBN6KoY03bdhM0TEf7FpjA15ZZXf5SEOU3j4k_MdLlM_3LAcwqjhbj3UmFIQRU3ZCVUw7ZfSPlLv08pH2IHDZ_UW8GufZB8TpLfkDdN_qMMIUOdmPGp3zPGV-mR_Dlt_ouJ9DVe8BEFI_0cLxIi61EaxvsCbYXtBcRrhCLkPwiO22R7ataFflaw0e8R4N3rRflT1b-BX9heRz0k5aQA5YeesiJ_zqQsmPW9r0ki2OFywpDKusJr5S3E7bpTVeblFeLP1q5alIbYUUEb5EKoXqomR8q_1NDCtSduldr_BVUeLxYUp90i_4Anihh3NjCStb_lo4P_M0pZ9h9ceoBbiqvxbQnxeb8al2AdlfeWmxUJuTnO7Bxu4Ul6CzxeDQM3LCdWUEu7WPM6lEtpGFt7zReBpfAWZIaQuJx36pXzN0wlLckqN7zcUWtQFa7BktYj5mvpFXXplH7am4VQBpNcbeirFzkSSaDkbwW6QF5_6-UvOzojIKieybh5x6-39v7ZUA6iLkDls7KMqhPLv7OWp919X2RwWnGhqk7Z2sSm37AeBD4DKHQjP_xYlzu2wqT717D_1bqv4kvOUD0FLFS1Rs2PREct0sxu14RnzBELAXKezrv3iLaqwXIPyd-mfnDdMfkqNHB_ms2U="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
-      }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_transfer_leave_balances",
-   "tags": [
-    "UC-2.3",
-    "FR-5.2",
-    "FR-3.3"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "vacation_paid_out",
-       "content": {
-        "property": {
-         "description": "States that unused vacation is paid out on transfer or leaving, which is the exception to the no-cash-out rule."
-        }
-       }
-      },
-      {
-       "rubric_id": "sick_not_transferred",
-       "content": {
-        "property": {
-         "description": "States sick and hospitalization balances are neither paid out nor transferred."
-        }
-       }
-      },
-      {
-       "rubric_id": "no_invented_allowance",
-       "content": {
-        "property": {
-         "description": "States no relocation allowance figure, because the corpus contains none."
-        }
-       }
-      },
-      {
-       "rubric_id": "routes_gaps",
-       "content": {
-        "property": {
-         "description": "Routes what the corpus does not cover to People Ops."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "I'm transferring from Singapore to the London office in October. What happens to my leave?"
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "If you transfer to another location, your sick leave balance stops on your End Date in Singapore. You will not be paid out for any unused sick leave, and the balance will not transfer to your new location.\nSource: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md"
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "I'm transferring from Singapore to the London office in October. What happens to my leave?"
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-d6ebf304-317e-4c88-9184-d1b2b170f738",
-            "args": {
-             "query": "international transfer leave policy"
+            {
+              "rubric_id": "correct_category",
+              "content": {
+                "property": {
+                  "description": "Raises the ticket under the Hardware category."
+                }
+              }
             },
-            "name": "vertex_search_policies"
-           },
-           "thoughtSignature": "CssCAY89a1-tekL9_FNsB98kXYhFCsPPA-lxVAwDOP1ZWJ30iJazYAugDj0sKg7510XNl_nKYeYUcZ8Bi4-_wYUTbp5l5q0qLoqYgYy-0yYy4IP2GjJIRvFNlgmxRsIKZ2jpAia5EvESpnA2o7QU1-RqmyDkngncVwfsjGb8bwQIP4GPPgoevydJf55SDNbMUrCaX2Xey1a4i6lkBGOZcBObjITaGicj88LkZA7DwSPoRK8hUgzp_bFcARyAAFRC66NCBqKC-1RHRr4ifHPYjdKyYvtJaD4i8cUBrmcQnAXg3lquoFQ8958goc57b6AQacpxQjwqntaZ3pjSQuKUw3txpoaoLHWvrUdEqAzeIaz8kuP04FztqPMwdLfdkpjEL14N5MLwG_9BrZK6RuvF4NeBHAJNe_YXKfQ7_AMnbWk0jZuk9wFCa2WU9z7yug=="
-          }
-         ],
-         "role": "model"
+            {
+              "rubric_id": "no_priority_inflation",
+              "content": {
+                "property": {
+                  "description": "Does not raise a monitor request above low priority."
+                }
+              }
+            }
+          ]
         }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
           {
-           "functionResponse": {
-            "id": "adk-d6ebf304-317e-4c88-9184-d1b2b170f738",
-            "name": "vertex_search_policies",
-            "response": {
-             "status": "success",
-             "query": "international transfer leave policy",
-             "results_count": 3,
-             "results": [
+            "text": "I'm working from home permanently now and I need a second monitor."
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
               {
-               "title": "19.8 leaving or transferring",
-               "document": "19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
-               "uri": "gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
-               "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
-               "excerpt": "# 19.8 Leaving or Transferring\n\n- No Payouts: If you leave the company or transfer to another location, your leave stops on your End Date. You will not be paid out for any unused sick leave or hospitalization leave.\n- No Transfers: If transferring to another location, your sick leave and hospitalization leave balances will not transfer to the new location. Here is the drafted text for the new section based on the \"Vacation (Singapore)\" document. You can insert this into your Altostrat Singapore handbook as the next section (e.g., Section 20) to maintain consistent formatting and tone.\n"
+                "text": "Your request for a second monitor has been submitted.\nYour IT ticket ID is **INC-98231**. The Service Desk will process your request and arrange for the monitor to be shipped to your home address at 123 Tech Way, London."
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "I'm working from home permanently now and I need a second monitor."
+                    }
+                  ]
+                }
               },
               {
-               "title": "24.5 separations and transfers",
-               "document": "24-childcare-leave-singapore/24.5-separations-and-transfers.md",
-               "uri": "gs://chris-pgp-host-elevate-hr-policies/24-childcare-leave-singapore/24.5-separations-and-transfers.md",
-               "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/24-childcare-leave-singapore/24.5-separations-and-transfers.md",
-               "excerpt": "# 24.5 Separations and Transfers\n\n- Leaving the Company: If you leave the company, your leave stops on your End Date. You will not be paid out for any unused childcare leave.\n- Transfers: If you are transferring to another country, you must visit the benefits portal to learn about your new leave entitlements.\n"
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "vertex_search_policies",
+                        "args": {
+                          "query": "remote work policy equipment"
+                        }
+                      }
+                    }
+                  ]
+                }
               },
               {
-               "title": "index",
-               "document": "index.md",
-               "uri": "gs://chris-pgp-host-elevate-hr-policies/index.md",
-               "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/index.md",
-               "excerpt": "# Altostrat Singapore Employee Policy Handbook & Conduct Guidelines\n\nOpen Knowledge Format (OKF v0.1) organization of the handbook. Every concept file is the handbook's own text for one subsection, verbatim.\n\n## Section 1: PAID TIME OFF & LEAVE OPERATIONS\n- [1.1 Outpatient Sick Time & Hospitalization Leave (Singapore)](/01-paid-time-off-leave-operations/1.1-outpatient-sick-time-hospitalization-leave-singapore.md)\n- [1.2 Paid Vacation Leave (Singapore)](/01-paid-time-off-leave-operations/1.2-paid-vacation-leave-singapore.md)\n- [1.3 Childcare Leave (Singapore)](/01-paid-time-off-leave-operations/1.3-childcare-leave-singapore.md)\n- [1.4 Time Off in Lieu (TOIL) (Singapore)](/01-paid-time-off-leave-operations/1.4-time-off-in-lieu-toil-singapore.md)\n\n## Section 2: FAMILY-BUILDING & TRANSITION LEAVES\n- [2.1 Maternity Leave (Singapore)](/02-family-building-transition-leaves/2.1-maternity-leave-s"
-              }
-             ],
-             "retrieval": "vertex_ai_search",
-             "grounding_instruction": "State only facts that appear in these excerpts, and end the answer with the Source line of every document you used."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "If you are transferring from Singapore to London:\n\n*   **Sick Leave and Hospitalization Leave:** Your leave stops on your end date in Singapore, and you will not be paid out for any unused sick leave or hospitalization leave. These balances will not transfer to your new London location.\n    Source: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md\n*   **Childcare Leave:** Your unused childcare leave will not be paid out. You must visit the benefits portal to learn about your new leave entitlements in the UK.\n    Source: gs://chris-pgp-host-elevate-hr-policies/24-childcare-leave-singapore/24.5-separations-and-transfers.md\n\nFor other types of leave, please consult the benefits portal or contact People Operations for specific details regarding your transfer.",
-           "thoughtSignature": "CrINAY89a19ESHmV6Wlq0ZbyoX2Kh4PY3j_Y5Afxn4jHaw23-9-b260uZY-Sh0ZHLcTxDa3BE4AcYrfDn4qbMGjnzDwFec7KRCWyBntnS4XjgXNGCLCFPS1K00uKRKYSXEtq3qoGe1tU0LnoPXVysf0deY8dAmap4jGoVEwUbYAfxaZWgUnPASR8Cs8eptIEVgqDnIdmhMJoBWfr5shCoSVPj7r1uzKkBW_CamzSUNktzNedhHLWB7FsJ1oG77CVELEGKArGKztmOcv7HbxXujz6HQxj6bTKzQ7sZoa6_q_0gunoktz1eRj9AVM6uSKs5TsBnv29fnHEuzwlDd2twj6MqrKCrwDSKfLrnN5ImcdhkSVY7CClI0pJbuuh1YtndZ-OwyEIKBWCKvU02DhAAgbTqYM_LGmKgt5xfadE93EqxcO1uCm1U-X7SRvz539SYMxPO2T_pqLOLP4Ku620Xh2cHjQB4Wy_EuJwLWBTLSOL9Dl6NES1K_HeWdvbx9NLn1Z_lBX8m-MSjga8nCGFY7tEHBZPx7ZKQSGViVm_ES8sJZfjcsine8kSePDptyUqJDZYkaoYYHBWxm76uI_Sb-LwjA14Lqx0O2vD8d9RYaYDv5cT3f1WcC2Trp8PCZenlSYk50wysop5oMalc7OT7r6Wq6XpB_G_GbUCbrq__GtsQchK0fhYciS6Dy-Fj7OmfVVyUeYQVEnYjtePAuwwHfx2XpSxqWe_nmAritMSIRXwIYjbQAdrIQbcTU_X6Iij75kURNwy2s6_7JtuevHgXPLWIRiQhhE1LcH15wpwUkWcZYU3ctEeVfTwin5R8SwNucgDgJb3MgjNX6WbYT2QZCyutsDp8_8yxP-1wXEQ-9dhw8hoBSrtAnyJehJSUKILPh75gWqxb8VEwEZIh8F1pa_vz2u2yn39f2ZG2JGp2CVG1nRFqMrSIvC-i6Lb-FzTYfj4Jg3W_1-9ifV_vfUHkXAgIce_6ic__b0VGh1pY5ltm_o4t4Q4VDlS1Nni5riPwmDRIUFwcQh4ZYoozXptqI5gTTU483CtDHLTUP54zhn4f32djaGmofLsAzwOeFBQZU6G3N9ogjNrKczuDgb9XC_62I7wvYn6iqb9rL6rV4jbeLzRIsMzhUwEaYdXGzyeQFQF4-_OJxfwShwQ7Fu1VFbPCdsab52USp15bYo7krY6W1N0RJnhQwj3T7FZwq55BGngO3wS5tffbDb4Lza_15_hKsWDi-Th7OM0E34i89zNNyw7Y8aqtxJEL7Fvc-aBoi4pnzAPRpf8p1WZWYvw6pm86IUUxQFKjJP8Fr4YxJk4x7s0xuUbO5Gazv77Jsh46noCXiAJl5OeWdUrp0AiP69fHff19J3d9jjHDX9wQOlfaQpYjVjeRUCg2cwTe3p3qm-QFOhOQTjFF66x6dXWHAqh-awvsFO8Z9LLrbJA1PJb9A-mesv2LC18hNHdG3jNlUwF_eB8PQnWDA9W989xvi0weguXUqoLExOYYToz4z315CnO2dldd6kDoApfNnEjZOJjAY3Lb4U2VK1Ox9XDmpYBSOyk5AzXrg24EC67JcdueEcw-jO4BKbUqLaoEYZULomR26xrm9EPS4MfS_2N35XjBbx4qru9pC_UVeSYFqdHJcvK19pYHO8gWtusdKBIacewzvT_8NlB3NZ7DP5AGqo1JDX6Oa7bS-0kz4ytbC1zTH7dOBVn0w7HLIsmjJkGSF3FEgUBe3bLSdR87-y5IJNh0l_jx3hjG1eSymhVGU8hCkVeCaDkUpb5k812A59tU_tifTHutAXCFv1tzVvEgZhn5UaZHHafYgd90Mg31SB9VwtVspeXUxAIOkhJokBx4vX93NiI2Jq0c7M1Y84EDbL-9uXp_xsVYmlalpKhThIkpeNbuSVUbM2NEsjzGI3KgN592mFX0HXVHLRVCl_YPVDWUyFrNE2eNFDLUXNZ4qlFW6BUjv0lrejU6xXo3TgXCSQeyHw3W3tHi3D0PTA3LmH2tUBLSs_2UJwFS3SjrkEJ9Ge1JM-MbgBdEM_etc_dstQ2PGtDA6Bu2yjDcEg-_KtxquwD2oKsdiZlJ6SjRUq2nGwPmJaM3zYqx23mwykfvuLakrc-lqr5WuSOBbHyAZbQChNmkC1jnNdwiWHG8KeoERngnaTpXlWKu9podx0gi69tHf0BnstC3CFoGu93y4766HS5_Nw1B1XKVoJYr9yFJKuiqJtFJ6HYa_YyGLYvGo3aa3yCh0U0bKnVpI6-GB_8HDmU50jSBzEjwyxSawrPlf0LxQ=="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "And my sick leave balance?"
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "If you transfer to another location, your sick leave balance stops on your End Date in Singapore. You will not be paid out for any unused sick leave, and the balance will not transfer to your new location.\nSource: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
-           "thoughtSignature": "CqYCAY89a18Yj3i7ZOTMttmTB6jFN9Wa9nKjhmxn0CRjfi1OSW8PfBMZEySZWB01Kx1S0BY5gx9lSHemyKun05nW6XOJkxWqc4pLQDRY1zMGRq4BgD6DMa1t2uLOnNDmWdCoXKNoOmGiaWiVH4L-1fnyBfM_d2gHJLZACVGqYcEEYwq6yleh7j5iifyVCeafa8LUuXc4rNWoAtCA8bkJN90PhHCm1o0madqXEO0JupDfol77PTcagFBCaOzPnebDJtg9Pl7lAz4yJgLPkwiWsL4F5p8w23zQ851KnsEryALCNYxp3Xi7i_m50wgsE0FITM88zU7fQd0RnKmtBeKSluqRIeWpEpNRxd9vCuGUaLMtK8SPuYS05qNl4DYQjsgkCyzpibzGe2sc"
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
-      }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_pto_then_correct",
-   "tags": [
-    "UC-1.2",
-    "FR-3.3",
-    "FR-3.4"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "initial_confirm",
-       "content": {
-        "property": {
-         "description": "Confirms the first request before writing."
-        }
-       }
-      },
-      {
-       "rubric_id": "amend_not_duplicate",
-       "content": {
-        "property": {
-         "description": "Amends the existing request rather than creating a second one."
-        }
-       }
-      },
-      {
-       "rubric_id": "recheck_balance",
-       "content": {
-        "property": {
-         "description": "Re-reads the balance before extending rather than reusing the earlier number."
-        }
-       }
-      },
-      {
-       "rubric_id": "second_confirm",
-       "content": {
-        "property": {
-         "description": "Confirms the amendment separately."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "Book me vacation from 2026-10-05 to 2026-10-07."
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "You previously requested 3 days of vacation (Request ID **501**) from 2026-10-05 to 2026-10-07. You now wish to change this to 5 days from 2026-10-05 to 2026-10-09.\n\nTo do this, I will first cancel your current approved request (ID **501**) for 3 days. This will refund 3 days to your balance, bringing your total vacation balance to 5 days.\nThen, I will submit a new request for 5 days of vacation from 2026-10-05 to 2026-10-09. This will use all 5 of your vacation days.\n\nDo you confirm these changes?"
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Book me vacation from 2026-10-05 to 2026-10-07."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-4db020c7-ae6a-444f-8c79-e82dfce22fed",
-            "args": {},
-            "name": "get_current_employee_id"
-           },
-           "thoughtSignature": "CrYGAY89a18dny15GYlA-ddPZfuxcksd12_1OHqfZZvs3JoFeDTnRcMBHUcoJOPE4MFupFArIed-PTrp2c977NLeLJdynoK3L0GLh4rnziMsx0ETZ195P3akVrQDi-dVUH300mroeM1eyism9QiH8SNv-SDIL6v3oINKBieTbidEH3tsN8Z-BKaC0cX-Lx1GF3_ubgvuMMH3ea6sgtwY-5EjZWtEX14OEFZlTfoVhol-15l6I_NYllvWMdKcNoMdsrfFiFDgOjxK12XY2FtvSpwMZ05mz648xM_s81_SNHn3ghXmO56Ny9zoURBb4aM2eO3ijy6ow8mzKAxfIokKOWQbIArfQzwAbU6QbPhnMwroICfw9bCtGIeNzwkOcD9PMapPdBYv6XjjxrItODtUO2B0ANfL9E8bkvDlvwnkt1liAm2oTWElDqYq8td1JpgpqT6avNcsUuk-EQBVNefwC9CbcMdMVMA7SEQvLavKllJseGTxCjuyCjlJ42E5yPUNr4qa60-wYlpu2B_VufW84YuXycuDVO9TqNCo7-o6FZLpgnidIde-Nt06RAUsBREQ1pYzL8ev2tna4-coUTF3_YdgDsWIE2nb0V8cKkqRk0yMPVdYHpzj-GO9KjBwteTZfSzIXJhxBB8cHSq74gG4T5_KqqIrayv5hNRyCMVyIvCIALoo3LjYFS4-eMjtbZbJDDD_fARyI7rTdl2keP7kx5vt0GF5LBIjAIrOG5TNxP67nNkpPUgFoAzFnNZbnzNqc3SoxMYQqjixBpv4HwDzhxbhQG3DtR4CjFjMNiEGs8bgYoJb5CxrzYbqNrMq0Rl5pabI3tOTPrbgV-xaQ9bM0BgFFQ1IL3VNjo7JH7sK-OgJGIgOZU9UZvxbHnGcs-8GF5swM8Azzi4SIhxxp2jrufLgMSkKDe5cm1qFeqTxlYY0QKsVO03Lg_VJp_OnYmLBOL5wnBDGzXNb-NI0l_l0mVwcbZhaH6rxFxSH47wzmgCuujbbdD-kGtZ8-uMnHk0wZzqD04vM8j5r2FooUPxGUFPoTMymLyi7fMOKS7ipNmLAVJUVKHlMZi9J_-IA3K3EWFtGnrFw-p6M"
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-4db020c7-ae6a-444f-8c79-e82dfce22fed",
-            "name": "get_current_employee_id",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "authenticated_as": "Alex Taylor"
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-eccc60c6-9259-46c2-9e85-589b2fac8e5d",
-            "args": {
-             "employee_id": "EMP-1002"
-            },
-            "name": "get_employee_balances"
-           },
-           "thoughtSignature": "CvsCAY89a18z7RcJvJANo9x8wMyiWMdLWSjrpm0xqtxf5hUEJ7Rh6UbRd5npevoOjPnVEMELkyT-Cljr9kZnTIqGWH3tXJicwa3HdPLCuaH2644naPue_Fwer7lRGqdYtUqDw0EchKG6G-zatvgI9G3ZcoGLU6zrBWm7doe93lckkmfnJSqnszb1XaAWXRrQP7fh4oJIvgGSmDivHBr8IcSpcQctOwLG5NgKl4Bze1F1p6uiT9en9z9KQiJ8y2LB2_pbJJ-JlhTGrV-B5PM319LTyLl3Ndl2wQlRtmeghuLP_lTr5YxFoLbLa5WS2eMbU2iwQuXym6u_KMrykIXjUjtZ2HmgcIOtUYmC2x_SoneLwICRySDgkRwQcJikImnsYgJjyZx2qwEADjDBZemXD3xm35ibSKR_xqk8Qi83R4Sn7oAahV_2l1u5jmTjqmMy6NZw3vHuq8HhHAZEMS_FzR8dDLgKSTbiO_h6iIP46sqnpLVTyM4uZYkp_k61CQ=="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-eccc60c6-9259-46c2-9e85-589b2fac8e5d",
-            "name": "get_employee_balances",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "balances": {
-              "vacation": {
-               "accrued_days": 15.0,
-               "used_days": 10.0,
-               "remaining_days": 5.0,
-               "remaining_hours": 40.0
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "vertex_search_policies",
+                        "response": {
+                          "status": "success",
+                          "query": "remote work policy equipment",
+                          "results_count": 3,
+                          "results": [
+                            {
+                              "title": "5.4 remote work telework data security",
+                              "document": "05-ethics-compliance-conduct-perimeters/5.4-remote-work-telework-data-security.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/05-ethics-compliance-conduct-perimeters/5.4-remote-work-telework-data-security.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/05-ethics-compliance-conduct-perimeters/5.4-remote-work-telework-data-security.md",
+                              "excerpt": "# 5.4 Remote Work, Telework, & Data Security\n\n- Public Settings Restriction: Do not work on Altostrat confidential or proprietary projects in public settings (such as coffee shops or public libraries).\n- Privacy Guardrails: When working away from the office, you must use a privacy screen, wear headphones during virtual meetings, and keep sensitive documents physically secured.\n- Hybrid and Remote Work Arrangements\n- Hybrid Structure: The hybrid work week is designed to offer flexibility in assigned office locations. Employees may work approximately three days a week in the office and two days away from the office (or nearby), or they may work fully remote. These arrangements may be considered telework in your location of employment.\n- Local Compliance: Hybrid work is an option globally, but local mandatory requirements that apply in certain locations will override the global policy conte"
+                            },
+                            {
+                              "title": "29.4 retention of employee data",
+                              "document": "29-exit-policy-guidelines/29.4-retention-of-employee-data.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/29-exit-policy-guidelines/29.4-retention-of-employee-data.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/29-exit-policy-guidelines/29.4-retention-of-employee-data.md",
+                              "excerpt": "# 29.4 Retention of Employee Data\n\n- Data Storage: When you leave the company, your employment record will be kept as needed to protect the company from legal claims and to satisfy our legal and compliance obligations. The specific retention period may depend on the local law in the country in which you were employed. SECTION 30: New Employee Onboarding Guidelines Welcome to Altostrat! We are thrilled to have you join our team. To help you integrate smoothly into our culture and operations, we have designed this onboarding guide. It covers the essential processes, core policies, and cultural expectations you need to know during your first few weeks. Phase 1: First Week Essentials (Setup & Security) 1. Equipment and Hardware\n- Ordering: To ensure you have the tools you need, you must order your monitors, security keys, software, and other hardware exclusively through the internal ITSM cas"
+                            },
+                            {
+                              "title": "6.2 protecting company assets intellectual property",
+                              "document": "06-confidentiality-assets-financial-integrity/6.2-protecting-company-assets-intellectual-property.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/06-confidentiality-assets-financial-integrity/6.2-protecting-company-assets-intellectual-property.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/06-confidentiality-assets-financial-integrity/6.2-protecting-company-assets-intellectual-property.md",
+                              "excerpt": "# 6.2 Protecting Company Assets & Intellectual Property\n\n- Intellectual Property Rights: Altostrat's trademarks, logos, copyrights, trade secrets, and patents are among our most valuable assets. Unauthorized use can lead to serious loss of value. You must never use the company's logos, marks, or protected property for any outside business or commercial venture without pre-clearance from Marketing.\n- Company Equipment: Company funds, equipment, and other physical assets are provided to help you do your job effectively and must not be requisitioned for purely personal use.\n- Physical Security: You must always secure your laptop and personal belongings, even while on company premises. Employees are required to wear their badge visibly while on site and must never tamper with or disable security and safety devices.\n"
+                            }
+                          ],
+                          "retrieval": "vertex_ai_search",
+                          "grounding_instruction": "State only facts that appear in these excerpts, and end the answer with the Source line of every document you used."
+                        }
+                      }
+                    }
+                  ]
+                }
               },
-              "sick": {
-               "accrued_days": 12.0,
-               "used_days": 2.0,
-               "remaining_days": 10.0,
-               "remaining_hours": 80.0
-              }
-             },
-             "summary": "Vacation: 40.0h (5.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "I will submit a request for 3 days of vacation leave from 2026-10-05 to 2026-10-07. You have 5 vacation days remaining.\n\nDo you want to proceed with this request?",
-           "thoughtSignature": "CuUDAY89a1_x844B4LDTlFOQr5YeQKshdGR-F-FAUWNqIIPlp8qVjtFcVYiWtaqvo-121LRBOEKNalDZa1Zo5MXLcn1ZvAdiWStJK-xH2RwDMFfyik94RPjBPPoeIWlq-ZXhWILrXnCUcZaiuUvc9PaXKKFfH63-Hu412hebOkCoDagybu1IfEj5dtfjkSfURF5bc9wYtY0THggXLV3scYeyYRaU_5z4PVp3UPErxjbRPm93QD_ZEdJu-uI9hDfSc1i3lHeR2FCqCPqi8IrAl8DHPoci0jxEwBPpj1Xo0ycUDuT6hm03wXA9jIp95Or13iGAoI3fLQ5YvE6lREjxU355kZzeXEYvHEJ4gfZVlWNS8QUWe-nd9mKSEmSN6TZRV0nbv2b3APE7W601kFzc-LB3qzjMreV84HBe564HKZuULELc17VXEMGJfpktJRP7LIgL6S82Qw_l25gOzvmZTnJYu8RiCGyBMK9WcSEly3NTdE8eMxmi5rEZ1eR3VfqvFFcj8UEHT50Rq9HrFo3GpabcjMLEf89aJOsOyErXC237uL2TxKiQNgASOlklo9uF2ngP0bEWvX4nVEdFYeEviwVAhquA1Hjn6ARHnwNURY3XlgDCsncvVQ4z2lFChaCWBKOk3ExcooI="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Confirmed."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-7c0b96fe-26aa-48c4-893f-e2633d94eb42",
-            "args": {
-             "end_date": "2026-10-07",
-             "leave_type": "Vacation",
-             "employee_id": "EMP-1002",
-             "start_date": "2026-10-05",
-             "days": 3
-            },
-            "name": "request_time_off"
-           },
-           "thoughtSignature": "Ct4DAY89a19ufSL1ZMtE3L7fceWzf78cF5f7yJqHHDVoDx98cJZDTZUIFqn98uGXaIVU9Mddl97mSRZY_0jymaXcHvIOg44NmgE9eIY-4zFDtpEFhWPhTwbd4b9bH-E1CCIawKLE1YWoK4H__AQtRfHoSI22zauXzHxBJOfxL8MIL-35DqUJlJ4_-vCAtLcPx1oMjOoahOZFhnkgUSH0fLh_KNzd-rX_eXyKOoJud6Smn3sU3ck5f2HdPGYA6P4Zc6umU4KU6bgpe-BSER7ZHPQ_sr-GwZv0LKXPNw_WwrWdVlIBG1SAfd8XYqRHTYVJ_CfLYbbjIEeDkme0oWyvNE9iXM2AGP9uPksStb--CVGF_0aeQfTgGlb3ht2SxzkpFtZ_TO_SxBEY326xlOJBFTbhsWay26Dp3etWVS_KLq0erFQebnNTnQXtcYR0bTSsqQtr2ktqLaXDWPJxHc_EVWTnwhSvNNJBG0Xx6LsmVa-Elje_n5zj6G6JP7NhJswq3eAVf2D2jwmJfsC7fwlqtPcX_6gOQI01AzvRjFBUpNN7Vjt9FvHld-KtrIygY2MaRo7mSja6Ht1DE0N-n1DBra0SjP4kcTQ7nLcHsH2jylPMEySuXZi1yL_bVZbHxNmilQ=="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-7c0b96fe-26aa-48c4-893f-e2633d94eb42",
-            "name": "request_time_off",
-            "response": {
-             "status": "success",
-             "request_id": 501,
-             "employee_id": "EMP-1002",
-             "leave_type": "Vacation",
-             "days_booked": 3,
-             "start_date": "2026-10-05",
-             "end_date": "2026-10-07",
-             "remaining_balance_days": 2.0,
-             "message": "Time off request 501 (Vacation, 3 days from 2026-10-05 to 2026-10-07) successfully submitted and approved. Remaining balance: 2.0 days."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "Your vacation request for 3 days from 2026-10-05 to 2026-10-07 has been successfully submitted and approved.\nYour Request ID is **501**.\nYou have 2.0 vacation days remaining.",
-           "thoughtSignature": "CtMBAY89a18vqGg8Qei8y2eN5zQ6OdfXvHrXiPxfsW6TKWQKqTZXvcP5Ymuavnqf1VyKI5fIo_eZujjmEsmSM2vMJ1prS7gLatZTSnr4sWGwREEiRLMMn_WBzZFjsgmBrR1DhI8IL7NgYjKWJpjafuby0hyV2qzIweXiG50QbztxHzgpewOj4HSgxsCj5pdbiE5pNHleAZsk4CD1e3r6QTSEfljNV1UITPfY4Rqc4a7J9hkGWvA4e8cVUHpF_2syAXtn0ELqZUobGRRAYsujcoAzO-wNEw=="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 2,
-      "turn_id": "turn_2",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Actually make it the 5th to the 9th."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "You previously requested 3 days of vacation (Request ID **501**) from 2026-10-05 to 2026-10-07. You now wish to change this to 5 days from 2026-10-05 to 2026-10-09.\n\nTo do this, I will first cancel your current approved request (ID **501**) for 3 days. This will refund 3 days to your balance, bringing your total vacation balance to 5 days.\nThen, I will submit a new request for 5 days of vacation from 2026-10-05 to 2026-10-09. This will use all 5 of your vacation days.\n\nDo you confirm these changes?",
-           "thoughtSignature": "CvEWAY89a1_zox9LIv6cqlJstlMTwivk1QFcIqsWoU2c1T9ZKACJ3SdiA1feRUYzhUvgaLVUBZIi90JfO8ZX8JH4mZINvk2NGDQpcYk87SXEyfnglTSiMV0qaB537WadBBE-wg8xWrYHWbwQrCWYb-rawhUsJABdjy7_AnWK7l30IlMgy2s8Hh9VfbInuuv0ehIiJUUumph4Pz6Fvol06bD-M0PvnKs-c34ZRLWTkMRQJ5y-sboEcI5qfZQo9TxDyFq5LWDlDOlQ5UwQUm0Fe58SztG73qUBnsi0HkyjeJwnzE-_MA9BRDp0a8W3yv5v06r-KRzQiuxlYzgT_CEXv6yUFbwovOaWxVCsYjIiqGvIyCBLoktIDVHgRQs-bZutnTiPin8Pye-RJsYjDVL0Ak3i5hvEzt4YHOWTusVdXavQMkmaiH_wzCHtMLPBkUJfOE1OKZxJPpIK-QxMbXwRwR-NLERnfBge3N5llm4yTRUMuVzjfgZOEpZkkq9UhjVPD29sYSTGsf-kgO2dn9y20dL6aABdKVMvtBEd712LK5SbigGCsDxiktpMuwFD5_LD46tBxEE1EdgM6r7f5ZysnFj2pMZcoAoGLLbULN9wiK8OPWmhsyLwKLH40rw2kOJwhVKcoTzVMfmHPJ_Xq74Dp2nYMk_J4BsB4n48XTpVxkIH0gyKv7AnF9BIBHYZ15LrYW3lcenI-tzX6qiSHT35Vp9UkYFL0zUa8Wvc1wSKIMOQaFUuflS4f2-JlAJZ_uSmNB0EzRUR50gAph9MWetlRrsUfB43NLbEYlI2xU1dL-yn-joRMzBqWgqLDcuAjizKCwx2Kh5OkSTfTm_aNZPhUY0kdRCFiiYVSnDRUoHU2NywFftXrL2vLmyPT_ZWnzsLqYjAWvOzMU30g2RsecSbB6IJAzsE2QvuB47Dc55RQpzttmuSgudiVqK_ndrIpbQ5PI7LL8uJ975248uwXEsltET5tb1gBTX3QsQAi3I9DIwXCdLJgbDl5YsKGvGxFUeuQH2mjp84PekMMr0iIi0l4KjPVNlfroCeSiBB8rAOFo-lEfKpbNINkRl4fKfLace7HCNkSk1a1kTeDCW-HmN2HAL8Po9gT4iYHDM2mtr7fIGbbg4tNx21KZ3HESpyhLWo3V8UrwFJe69SQW95sytCoqvwGQ8X4juGB-SI-E5uSv0vtUAZzIXXdKYDNQOBSZbC1pksQdKTI2hgvgwu-WMCXjA_b7iuwVCCcEMw6ZypQxp4cldW6uCtkBx75Ph2po8Wqcq7OQ2d-hYLUbhXzveEOU0xBOCB5fVYjrtGBoE89nPXHUVJrvH7-l7xzZ9sDoMs83ot7FHqJHa-pfDPIrmObCQWQkcCGyzX7GwdZaZIAS6BhjnodXRPr3z5EpsDX4Nlb76Z6kFHCbdHH1t3z_y7nqK2coLMULTlUXvlGrSAyXGD8tJRB6pvlMkCuUGGyrwl0u_SlisXk-LjOvr_2lbQWJxHgb4tYUf19s_2zc1t61R_7a8ggyfvW6vXc8OtaxaD8KaW6-bBLuMwCnWeZ6dILacTmjMbgRLeByXQZ8aZitcl7_5TSHMbGapCBYgse395oPkbNjEzMGbcNd2Z8jqWGQfZpqnZvqn6aKuhwRCw5J0ut3VQbPrb_64u0NXzDWoOsPQJJiDLFS7imH2Qhy7Y24DWcb7Odmky0XItTJrx1E4WmVh7c3olHwbB29dDgZg2zPVC9nOHG7l-0p_iC1mfKLTYinkh_B6FFXv3O20Azozz4xsK6W79jBYLO6RZFo__xUFZHS4kAO6QaeJDROQABHcBtfWZv4Ucic5k24b0eXxy0eBwmlVrjJnpbsR7E5Ucizno3Nu7yNFhrYH2ia5oegr3uY-6byrn12k-A9SG7s1PvdRyRo-dLzFFevL7fiBxYx2yXpDNB7GjP7k7IDZlTYI90-RdBt-CQ66-yG6iwKZVl2586o2YI1T7pmheY32clMh3uw1WvxNEGTbfryJ9VSV2RIjUt34x3E8uIQG_X60gbV6quhY69wfVtD2YE9UxAk1MCsN67lcYzUMwpgzG1WCkhB8LGf1VoYgi4sAYJ-ln2ZoyAkbde0Smbm-nO2F8ggLkygqv1cPCE3Igsj12oTdB5qMXoDyiWR4bCxqRk7CVQWBQ9CWPgPISDaRX3ijWYcYgVDMB7s8lEqnT2hgoRsucUBd6C074RgibE1v83qVXYDGtDvZyZlv5z4KMfYckumqCYC131i_iIoSWmvG9v5rafyx09yW1_OTOTtsQ8DJp2PbJ4Di0BM7YAxiw-kX7WffDg9lQfUhJxKEk57WzZT2rdPBjQvWbetBd6Ej7vfok2j3aaJHJgIADay8kyCOGpRwHq9uO02Y0FRo8iDKb62Ex2X6tX_M3mT4ekSvwqpwu0jX1ymQruXm4K2AeszDX21FPOCzqCTj42-DTd9ciCEFdnLHGr0RMVkBLq26r-umcygrBxJjNtoBlDvdh0CQiKt3eqURiR1xbIguvBP88D_vKQqZkmxXUHw-ePF313ZE6toNyTbAMSg1Ekk-dthNHyvXpPkHEKV5NyBVjG0SaYo4Lw4NwbyjwtMv0llBQyDRIjcrQUMlIBGjpFEzVvLAig-FXqXigJWLY0BGkMEam4NhOMih3svDKcIt0QFAMSf4Wq-j0KtwfZ1sUGJCC0EpJYrJFAhy0VC2d0BMaGbtzJCkLWbjDluoJvdHgMx0B0zY93dXSIhl6RvaSj4dUu11VcHs48nQQ5TCOS3nu7GMp3Ymczz2RQjsnVrtBkPddYBYKpyuYGu8AyhiNEroe8h4N3SJVKlR5v3hIiIcZutv3VLLH2oaDQ1hu9xpjoJIZjKookLQs3EObSkIOf5EtAJr98VDsNuOxjfbNlW2SFvm486UoGvOe0j8fBhDPXZWBTz0q1rCISu-Kdab13-saVbSX9WFwSJqw7Vu0dmuPt11Pz46g3OXdV1My0n_6pZ1sX9HRxYX5dQe9dICoA-zbQPjEFPL9BxqAbycUbXgxSGxMLJRx70GxLd-i__aBt3CAXArnDvE43SunFRsDZB5VeHlQRxQvg2hpXz_B9KahGs-jvBwLMoxJ5JyhATNQ2BssKi1uZ6zFalxGdnqZqSqQ6ykNp9b9YAV7YzU0L4VfRy-ssZQFjyS_hEvwWhx7L5zTdZ2RwVJOuY1PkpJJZiRt-OlX29EWJ3F0yr7HfDM9pNRxcdQQDcXYsEpltXDbpbboKUFAXXvPBkoz3fNXgrsro6aCT1fLvQSPTjw7bAcYeiFiDvZUOmIfvQl4RHEdN7uAUsc-zOC54tkEJBWbkj8TI12p7_UfxBndzHCh6p8vJmhs0H28dPv5YsKtnVU4QAVhpOcmhkeVEZazjU1Fp2E9vNIYguHcYPlOuIn8iFruU-HaTR4PAaNPIm2Kf0GKLc5RUMGjixInBChCmmRcoiJCyoCsLNXVuUhUzbggAT4OZ8wbmKOiwy6TPfdw73aMc3yQSW7skGNN83DdL_Jjbod6CE8YMt_kiDpEW9D-2fKzCVdgnY60dX9LVpvv7qGE3hZ3FypBcRWYImaaxRIvF16XtZ2Ujvs8SMBe-X4N98HvEa9FqN9jY_2URTlhcLRAvvrO_kDFesiSGX-fxL03n5GeJ3oSzLcl1ghUWt7NH-CEH9QhpT64xfMTG_2f0hHGctMXFFOqFlvdZIQK1WW1WzkUHoKUsMlPpiKb3OwA-nW2pAGhv6ZMoJorifUIhiZ-_lWjuQfFYqhJOxnCloCiOlO7_EWP-0-0ykgpvuBkI3sGbL-sN_p6UO_VMk6N5zouA1_sWKK2QP49-7WxflIU0KzjXali_1xrgh5f4ndMzHfJUXwbvbnPanz1FUIwYNrnB7nNDjtS-HWjrkp6zz1EAABRaPizHcWZCA=="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
-      }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_ticket_lifecycle",
-   "tags": [
-    "UC-1.3",
-    "FR-4.3"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "priority_high",
-       "content": {
-        "property": {
-         "description": "Raises it as high priority, since the employee cannot work."
-        }
-       }
-      },
-      {
-       "rubric_id": "no_new_to_closed",
-       "content": {
-        "property": {
-         "description": "Refuses to move the ticket straight from New to Closed."
-        }
-       }
-      },
-      {
-       "rubric_id": "resolve_with_notes",
-       "content": {
-        "property": {
-         "description": "Proposes Resolved with notes as the correct route."
-        }
-       }
-      },
-      {
-       "rubric_id": "confirm_each",
-       "content": {
-        "property": {
-         "description": "Confirms each state change."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "Raise a ticket, my laptop won't boot."
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "Since the laptop is now working, I can close the ticket **INC-98232**.\n\nThe process for closing a ticket that was opened in error or is no longer needed is to first mark it as 'Resolved' with a resolution note, and then 'Closed'.\n\nI will set the status to 'Resolved' with the note \"User reported laptop is now working.\" and then immediately close it.\n\nDo you confirm this action?"
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Raise a ticket, my laptop won't boot."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-a1c597b4-ab5b-4bc2-b698-cc711da83db7",
-            "args": {},
-            "name": "get_current_employee_id"
-           },
-           "thoughtSignature": "CtQFAY89a18Z_j38cc_O16uLI0cJhX0CK0AzMgPjhhz9Uw4gSPG70R1N_bv_i1fZHbbxSoaxpyaRshDvkRG9lzgsXhNllf792K0Buce-GUmkee9Urg-ecslqQXzSnXrCcf9UG7QNSyNlQ73VMvMO-yzDqyjLHHY4IYG8exCZ7pnEDmB4NKC29U0iPrXaHk6E3AT5SpDfqlX0W73eR0Kd3TNZ7sR6GQ_R5LUJp4yHQLsIkU8ol9CMU-yzhiKyz69SzcqSSCkPZmfcPPcV6imAttn4cfwh_wuKB5BIehrh5nMcLPOdIPYMp5F05LIdbCDY1DrkND-hSSi7rlMFEmNlE7lm1mtwAygZwjEK8qNU67_M1bT7kYM-ZwW8hyCxYbEgJSovJocOAShXWPGZRQ_z4wDJ7fpq2yQKA1EDY47LAGehSS1MJVQauedaVFRq6rwPUIAFVjru6A3Tyfs-mbZmFgt9KrGIVBsW4uSRN2DxkhQb0x6FRjVGDp-E4ZzySid13uk4Jd6qAHYxb_ZqJ7frJA_qNro8-O2xpKxJPXtgcb5HgeRfnM4FWtJ6gPMPsxsSlHUVyLZmI9ErYs_ztqu3tTbV50U7j4AYW4-kEpFbM4_0Ezhgv1Vt6_DNbIHl0-s7gY_F4t-Ww7J-b1sbL2TDpjSnCesDG8_om0suA05ohg_-wC7mE2p8gfFcE5bFUmaJkoKRnBGbmbHmjSfBo_MCKB9cCvIOSqO-FI3eVPWl_K02HRBIJ7T_I-uwoMwzgotljtGREaE3iroOqauKx1amEiBga3uk2SnP9pZ353opdZRigX3_suMHBKKvcBt5JWSL5rlXjAals3AiNGSgl-JxRgKufrF5bPr02Ar1nppQ5fB-Zj0MKhO_J1mDWRh6G7xr0Lz2jIZYOgOoBfiMzPhVrOEhyh5e3dkHX6mLqA5Z273bN8VKyACnaAZIGyeYG1e8IEaUf5eaIg=="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-a1c597b4-ab5b-4bc2-b698-cc711da83db7",
-            "name": "get_current_employee_id",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "authenticated_as": "Alex Taylor"
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "I can create an IT ticket for you. The category will be 'IT / Hardware' with the description \"Laptop won't boot.\"\n\nGiven that you cannot boot your laptop, this sounds like a high-priority issue as it prevents you from working. I will set the priority to '2 - High'.\n\nDo you confirm that you would like to create this ticket?",
-           "thoughtSignature": "CqAEAY89a187E9UbicJP4ubn7zIhqn8IvjESb7vlr-_KstrcDZX9BIvt_W6Z7Dd_sQ-62azcC8gEqWn-XJ_MB0q6ETMByH-PVebvE6UijMdXZ0HjRIEyhy0F64kV2rWeqB8TYOE1sVU__m3Xo4p7zcLi4oVghiJvc7-3pm6XvgeRDU6UizoKIeW-IamDwwyX16pNTJRtmbKZ7NLOQzwEix3szJGrni-wLAR1mI1wY9_mvsc2QHMspRxl3XAyy16xuNNQzfoxdUr4JO8ginq4Pwi4h9hxPGNNbt3fdG6sFf8JNxlG5bqRQvg7wEI6Qc0rdiE8KPAqD-ebgKSXYu_-ib4SZGepqjKh3kl-8V-Qu-qnAric6whJ4Omce86ZpF1CMKBcf2qmYwrCfrgEHg4lLAxGj879JUGoTLtw_SZdcat8288k29z2n6dFUiq0GxWEVaYizSVRR-lxroDleU6BYZgqWJXmFed66sZG93h1e2IajxYO0Q3LWdZjFNUZ94Qec-DUNFUor-Mq6UdBvJOVcrAG6ToZVfW1jOe3hhpLaYBYO0sDkwDRUa6wZ1_C_mnDTUt37A0fZEJpfMDdvz6QJSZcnRThi4Ocnvms374QYT6X9QhtIpGmkWp9P1_nmXjpHLXVjEIhJj1WzpdYyuabH_UPj1gSMZeeLW-_CKziVdhma8cCy3Tma7tL3PxfjUDsoBE2U7A_pTbIE-rpECcfDEsmQA=="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Yes."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-ecaa5a44-171f-4c5f-b465-854117b65ba0",
-            "args": {
-             "requested_by": "EMP-1002",
-             "short_description": "Laptop won't boot",
-             "category": "IT / Hardware",
-             "priority": "2 - High"
-            },
-            "name": "create_ticket"
-           },
-           "thoughtSignature": "CugBAY89a1_8axNkLW938ldeIvzxdG6MCtfAtZGWaHTc7rdoCH4cBabRWJdJEqINHSbLrOn98nQslTy8KWFWJ9YdqxcWn6EeA1WEHkKD6WzquaPmP7gEZrWIcNTknzAHcU5s4jUbgLuJ0D8qhwd12Iw8q17e-dO_3Kmypi2AGOpIvWxtBGHLQw9_8ojHFucY_81yDpbrgRXgLYkiiRCSAsKOLzlDAxOFAmNS_Qrzk-I8gh6WxHliWX9DVhcd3WT-6MNDrERfL3L18wmwO7T7PaMgXIJNeJN8fXspqXky6pejdmF-wfnRVC1WTw=="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-ecaa5a44-171f-4c5f-b465-854117b65ba0",
-            "name": "create_ticket",
-            "response": {
-             "status": "success",
-             "ticket_id": "INC-98232",
-             "requested_by": "EMP-1002",
-             "category": "IT / Hardware",
-             "short_description": "Laptop won't boot",
-             "priority": "2 - High",
-             "state": "New",
-             "assignment_group": "Service Desk",
-             "message": "Incident ticket INC-98232 successfully created with priority '2 - High' and assigned to 'Service Desk'."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "Your ticket has been successfully created. The **Ticket ID** is **INC-98232**. The priority has been set to '2 - High' and it has been assigned to the 'Service Desk'."
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 2,
-      "turn_id": "turn_2",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Actually it's working now, just close it."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "Since the laptop is now working, I can close the ticket **INC-98232**.\n\nThe process for closing a ticket that was opened in error or is no longer needed is to first mark it as 'Resolved' with a resolution note, and then 'Closed'.\n\nI will set the status to 'Resolved' with the note \"User reported laptop is now working.\" and then immediately close it.\n\nDo you confirm this action?",
-           "thoughtSignature": "CoAEAY89a1-ew9ZkZEZTNG6KNo4_J8BffbS7mTy7YWRt0XprbyMEl_7tfCZNi2HmTTObqVfXdYDp2VhZQRQ7fe3m8E17ncEN5o1hhwKu3OMxKDpBzL54Y0LV2Ial9kqMIyC885WKuOvQ5Cz6K5466CwZoyy5XbU3A-4mkdxEZaCMUZOTUCx5TCaudSR74-1Zl1S1qD3aMHzH6UQxNCGDHFsy1_CYHrmF8PqqBZrunMVV5Aj4lMWTf2ghwq7vbqb2C5Jh3gr4FYqce-ZCtGSKQmDLHMlNM2tsOukveF5vL_UaKJaeofZvXp1MyhDZ7F3ZySBhfJIorbLpHmPAXpesh3sqMSqF1mY1c85P_-g8L2N-qiZ4oNGSGdUJ7MO9HMpeGtXhSrxuaGauNfIHeuXNiWMT-7hugrtcLZOCf8mCXCJ5itJzJFxTIMLhqFfOTWtxRJKD5Ph17MWb1_lNJuXHIenG5X57wYmNDX8Y5FZa5aZB-8ElC98knjnlj3950mJSSlQqmZVI75BaqGteddY8p5PLZmihkX244Qo4Aj9hJoUCjW6rUhGY9HCkwI2af2OBlbi4nGy0zsBBGS1DBcuW9uXMJ8br1cXjVHKfEDGzMsDcu3Y053Jq1TZrzpDtayZ_3AoS2umCMuYhCAsXuHJ6SKMEoZ49rfetVvwU2kqI6K_DtVU="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
-      }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_balance_then_book",
-   "tags": [
-    "UC-1.2",
-    "FR-3.2",
-    "FR-3.3"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "uses_live_value",
-       "content": {
-        "property": {
-         "description": "Uses the balance actually returned rather than an assumed one."
-        }
-       }
-      },
-      {
-       "rubric_id": "counts_days",
-       "content": {
-        "property": {
-         "description": "Checks that the requested range fits within the remaining days."
-        }
-       }
-      },
-      {
-       "rubric_id": "confirm",
-       "content": {
-        "property": {
-         "description": "Confirms the exact dates and day count before submitting."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "How much vacation do I have?"
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "You have 2 vacation days remaining. The last week of November (Monday to Friday) is 5 working days.\n\nPlease let me know which 2 specific days you would like to book off during the last week of November, or if you would like to book a different duration."
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "How much vacation do I have?"
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-8e13f15f-0849-40cb-a5c7-a1c6e49165a0",
-            "args": {},
-            "name": "get_employee_balances"
-           },
-           "thoughtSignature": "CsQDAY89a1_Hboc2bi1VXbw6s2o8m9uJWGfyGJnRD-2CWwrmIvp1mJj7UsuWMS1eOF9uk-D0ShNKB6MeU4AKFJajZ3qEK2spUAg6JqKCIegASol7Z9NafMxPFzden0vUvOal2I6Sm_3mE8iQJMpGFWtu5GKIcpnS5dkYcT6tetDTwZSee0cFJg5qQR8RCjm6iEwnYMGhXYLux5wYME8_auvPAktyuSJNqQFczE5SPt96gdm4va_ATcFUursN8u4ThaO9xLKywS5aFTSyuMXhgym_GtNQA9Qmai9BdMwtqKGwIynMHRecAP94NIIi-hT_fiplJQGNhQo_2c89aMfbAxKcE_CTyPkqPQkLf8Gjv7FZ1gwIPZmMRM5TzUUuxC0Ls7btvjw9kt5CbMzw63puvo6rT7jVyF3GnHeHRMaaESW5qGPKfdxSwAmmexCGuwAwFYDWRj8YVgZvaYDRnxRGvFMp7iUsvKbgaVx-IEuVLUEzsjBOpDK7Rbw6Zxxth0uNozcXZuvgp6p89YMUYUE4tcIjD2AsyUf_RS_hqA-W8rRJnc6xQC-_LulE6SJ0J8E8IQveGnMDNZwvePQpIBScW_Q12MaZgDw="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-8e13f15f-0849-40cb-a5c7-a1c6e49165a0",
-            "name": "get_employee_balances",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "balances": {
-              "vacation": {
-               "accrued_days": 15.0,
-               "used_days": 13.0,
-               "remaining_days": 2.0,
-               "remaining_hours": 16.0
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_current_employee_id",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
               },
-              "sick": {
-               "accrued_days": 12.0,
-               "used_days": 2.0,
-               "remaining_days": 10.0,
-               "remaining_hours": 80.0
-              }
-             },
-             "summary": "Vacation: 16.0h (2.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "You have 2 vacation days (16 hours) remaining.",
-           "thoughtSignature": "CpQDAY89a189PIs7CHa68Jp3rN3QWnC5Ft6NlrI5SSpvDvcyxCwITsIaoKKKqPD5WxK9tMFLK-YpPsFDsTrWc3VQfXf72MzTsTUW_tlvRMKh6Lfhaail1gvSre9FR7rUWcun8DvJMbmUZHjS0s-RGv1np0dsdQuyWTCRaENbpvQOAFmv68MqDGP2g_jtBEIrO774EU4hcRTgHTD9qjGcNnFnz_2XHzaiqhXBnD_fQFG71gzH4-nP0_9UcdBMHol_JI7URCtIWdohoDI74rTw9rvUxPM3KnW7XJI38rtCRHQ8PG2arDyyHXRjc0GsS5gNhM4kOtLi272rSaun5bw8wW6iCgYwiAAzFpPIvsUkRHl7xErshTdYMeB_99zWQegsacANU7IQfXwOnUhJxjXJ64GC6P6tNeHVH1G1xwiXuHYbr23_ON3gCVYpssZ5I0oh0BgjhzY1PpOjRqE2p4y49XRzzYLzLbx4AAth08zv1GG7TmKF_FZS9Sjn8eY7Wocp6m-X0AxwJhl7PDN0DO3M43EVsh41jiY="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Book all of it for the last week of November."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "You have 2 vacation days remaining. The last week of November (Monday to Friday) is 5 working days.\n\nPlease let me know which 2 specific days you would like to book off during the last week of November, or if you would like to book a different duration.",
-           "thoughtSignature": "CoYRAY89a18O2PPUqAz-815bJLxV-yObgCvgSYRylhj1Ztq3P0YG7Ufof12_l222I4FUNncbJ4covixdfrBRqrPjHAm58CkxgWICZMp8SrjXDzmITNscxhd7diDJ5m8pNpgp2YtEw4YaFAFwDHh_hYWUFNAUrxIOrJ-y4I13smzRqsej2ygwf4eWjekp_vHVOmAler8PnS--FaWbcr6aYomqmKUbjD9DNeM-BREJsrquIOh_wj_i3pkkK9Yrb6ixyaIcD7xq6KNuEQ8X10WDMdni8QGP7cc_GLnRBUM-DiDeErkp2NK9ZVZVsjbEZVvIEBRJlICx57LWAYBeYrqt3w2lZdT4l6f6CFIr2SlWbwCHJ4KyREuL0E4v5B6XeT2DmdlvucrUQOCWjyUAXu1nzGmH2IM6rm3DRs8QPwT7oerPBVlArPLQn8HsUJ0gECo7TNgztTUvuJNN2W5Jg56RXcVsItcfVUfhEPyDjGNiLeSsVZ6URxPs4jVHJpyK5cfRgWetzg2ITxmjegDRetF7XR5aG6IfcZ3skXacBUOyy0Ju4fsuu4Msa0I0UCUTh9-LkvMKl8rq8_s75Ot3VyFgDrqIEJsV0GAhRzoXjo5exMZvpO0WvEehbvV4f6QJy8kf_eJ2pugRMQ7bSxvujASQbeETacHFQfMCnhrHe75nfuYFtW-CbJohilI3VmdKPY3X2qq4zb46Asu8ohrjoay0JiLZ2_RQOCzeMX8wEGaDST9RXGDmFIgP1Px2D1xdkotCdb4z5z-Em_lHVRbgaTzK-eP1AhSC5utfEs0CSYqGZPbe65ifwe7qE0HLdTiLYyZWMrRqWG3m-djOr7MqTNBx0AFrSyfsVBv_lqMbekJSRFiZ2VBvlGI4PzkF9uepGPDDjt_0ThqxxyLfwMro_GPzRDi45r4Ra29uwuskqRm_St1C2Si1TQv0BjJcb4pgr_1kjgYOxr8bD_uHGCI5R75vs4HObuB_sfIprf8tPHohDHenv5YzEtmkq7dA_-fMlXhEEMCxMs6j7EjENH7SLHvUDBhx3tbrBelJg37XZfsvex2JFAyt1cNtIYgKjHy74Uhcp41_DSYzSve748stGSSv8LunWovsx5S0So_XKwnCna4E5lhTF5crpHAsN93My5JPxqfXY4K5uQ9gZAD6lpgLpdVPLd2l64gjy41bg0pD7oJiwkPHZnAn9H3vagdPV2H7PBWUliLO1G0Khece3F0dCBqC7pihHCwKFUoaGSW-3q4QaAu_lDpcbHiRlqW56taO5afoNXS2wmMVlwW71rV-ENEnh9D1uBj76Qfd2oT5MaU7EpXi726ZBNBs5LLhF0RJ3yZ5rWPO3jXJX7svVbCw2QdH2pvpVOYJudpF8aZqL4ReL9-BH2dcvfxKjawQ1900Njtkp6nrN-r1JGjcJ_HJimD9MpSu1EFnS-2Wp4tJbXRtR0cFRIm5pRcsHPqkupD5SH1o5_JqqQTzC4uKnLKwqntdS6EEQrWVfJbjne-ExlixYykDdWybn0uQ688ordB0_689_F0XKL00_0ssnNJJBpb_SfSJ5FS-ioCPOX4ZRqqDV7y1hYHrSrNI6Ne5ENez6-TGYL9G4xJe92fcbEIQ2q5vIPnS7448gfdoLnTDQ7JrHqqF1CfEJ7Vhn4MM1JDPM8rfUOOjYBNEJ8qYU9vHkbTO-5Goyx06VgA7p7-J6dMC22dDG433Pa7FBZvySRLKL-GTpVFSa5EFzZ7eukZtuQPgm8LNlMsXB-GvQiIRCJUts62JfTIO1-Icf3sljOMwAXZLeFibylSfQEYxF-oXr87KYZsqsp9M9gECrDUlWkRAgtXmYBg0uZjyQJlOTR66dfyRG6cWTrffmbtvWwL2BHSUExn1BbaYYuCm-I0wZdmsvilKThRuoSKKgNwMo1qkVSBjqsQaSPZ2qwNSazq-hDbuvUUHVghD7olPDdE_VqGcaDCQ9OXxKghcXF5BkJp2EAgXZ6Ul4gHdbt0mYJZwtHVS73-addm4rjk3bGpPRMV7A53ftB2UBatF9qyh2LOWEH11K1DoXMG2aT1O1qVTUYoxTI36kWA1FyD9QPyf6b_tx_uKZV-yETLOEGZWv8T5z9OJty4lN-QrKt3x1RRbMyeOMUaat3B0a0g3a5YLQKJybJgUDU2mNvFuNv2YbspFlFvpbC_ZQieHFb18S_XswQW9oYOQKXAI5VpbneYk-OSNkPOD6sToKDX5Nq03aLT8t4m-wqAZV0CzwzUMLaQObdJbn-G2qbT4xu6NNV4g6Jh67oQATuiHeO36YsOZq0lvOr4ubmLgzERB4nnRSDku3Sid5l0fpAa3j1WdpE2Eykdh_YTTPejKhLOOnRBbN86hIcsVk4eBGeGyNUu8AnNf7Nj3tfbOUalZ_jw5zHubQYA6lqXsESN85-Ud0bKyLTT8a-qD1QYynOqWKRMGUp3RyqRUHlaAlA9EN3weSCJa1ezs-kD0P498pPcVCQ6MOw1g7UwGVhl69vBb8PMTmQ1ultSbQDkkX7xMORPUonJizFOXXg3Vm8PYkRISJW7becPTgtfsvIcbpCBSegh9DHEctCtSZA4U_YJHmR1apeXil-Y94zGWrGuJeNPWLjZKmWdBjP_x-Ypn6j6TtWvuzFTmbqjNslXCYNTuKyR8dK4y7qbJ5bITro_3Q9uG6vRfSAjSiuS2BhIc91PL2e-pcnvrhDboYwwA8wCDAfnoGYoaze44YahXEiWVe1utTzBzKD7XSciGv0_2jRe5nz64e9KbULSsGU6ayIVj2ScC_q9qvy12Iv3F_LhVaB-3QiJemBNPvx2hPGul8ZU1wtAOqJno6qmdEPm5WS0d05K1qZRHxYh3so6SGu-eWQIOjhMrgpbH098GLhJ4E8gB3BxVdTIs_ZIhHH2r-PGuIw=="
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
-      }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_confirmation_swap",
-   "tags": [
-    "FR-3.3",
-    "FR-1.3"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "honours_pinned",
-       "content": {
-        "property": {
-         "description": "Executes only the 2-day request that was confirmed."
-        }
-       }
-      },
-      {
-       "rubric_id": "reconfirms",
-       "content": {
-        "property": {
-         "description": "Treats the enlargement as a new request needing its own confirmation."
-        }
-       }
-      },
-      {
-       "rubric_id": "balance_recheck",
-       "content": {
-        "property": {
-         "description": "Re-checks the balance for the enlarged request."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "Book 2 days of vacation on 2026-11-02 and 2026-11-03."
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "You have 2 days of vacation balance remaining. Two weeks of vacation would be 10 working days, which exceeds your current balance.\n\nWould you like to proceed with a 2-day vacation request, or would you like to adjust the duration?"
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
-    },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Book 2 days of vacation on 2026-11-02 and 2026-11-03."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-82cbbc4a-d90b-47de-a0ce-1ea9f6a2754e",
-            "args": {},
-            "name": "get_current_employee_id"
-           },
-           "thoughtSignature": "CqQMAY89a19IZCAWpW9W1wzOzBOOuMXiSPa7uPknCpAyMMlzUZYRyjluckwDogUx-tvaIzhYL3VulfnD0TLm2OrLbWQ1Kbbv8AktI_aQqKvPKjY-br4hiSgr9_HVvQSiJKtTvRAbwROSRKwj-XWwand1EmLRJap3ub2l-f153vPAbuQpKd6GwxiUAq5_jhNQgN5mE3NYvXatrhJsgazNT996aC0rxG0UW90Q1irGZTyxab39rPwqLTazaU_3VB952TLli8a08X9oVTpn1lO31GjM-JrYzl1ymxvzxYOq0i8idWX9YJqIjheq6EY8B0TZQw_KaerLdvKnKRNbG-Fcqw31lQKCRyCd2mMNaFgKNtQCOKE_j8S49QXvrLcu0aEsum8U7hCSR3cX6hwRyyn7tV03lM3YFru8mCS8fmTVSzdPFQB_8ALF3PuZWrqjB20buZ8b2MFMLHXFtmHFf931wsKUMZytm04sMmM8MM574TI2bt472cUJwq2EMzDsYyd-S6kJO9R0PXG_DwBE8faD4_HO2trMDbMgAJ3zy2cuC3EA5cssEJu0slbc1eU_AEfDtj_0WF_QUlMxsCORD4kTax6dRgmouJuYw7h3lXluNILG45tGTHNDcaFOsIwP4OnKm4dH0NWWctYSvpAsE4lvsuhECtm0y_GJsx19ax74_ciq7f4kjfUTzuPjA_AfzJUCxZPKprgDRZts4pQaqZVmFL4db2UaxkRBCQddZbB9kv4xcclhdVdAKd2Q2fZzCp6vvE9_yTZwoOk1ZL1KvkZjWg5SmZrLhhGHbYRWwYtJ-hOHr9m--ip22oXuqTVC5SNe9otQBGujSKp26Mqhq93NWKS_jg3qE-dU2qD838UxEcyUehyYt4zkTTSNCO6SBeBmUqDIfqMZvJZVS4vy-EJuu8zWnn-MMsT4LY5FFiZS9YNKqecVyKmcU9xZ2XlIyvVrvRvANZoY3VgERb1C4oOqJsfv_9HkUuLFm1--m4nH8VQDKSHK0RlFbDSMZHBHXpggACTEoHTP2Ru2-GkRYJgkBLw4VAf-10FCc4_PIQ41zkfAnzkyQbydGOhPlsG-tDvz90h-CMlzLQ80__3vrMAmgrApOnuX6JKbXiWFD-Wdqk2bjExVqq4BNvWcIc423xY0TY8jzzWYZOoV8zB1sOzVR4f_w3DL5KM-EbiSmSPZW5YQN6Q1FLi-zWrjVR8N9lzUHwvwV6AdZTgO64w0asR5KWJsNJk1iSi6mSLK0Nvy6wUNESFFO-cF6mDytnogv0-Z15VyOJaNxi_MqqQEge0OHvwQomZrBoGE5Cxq9eE0YLjfZb3CPkV1-w3LwxYr6POCttNN3KTYOmG7DF3MxC-Oib8V38adeZu8zjI_2g4VDApJqrTrhED0UO4gq3wvxIIj2lh3ITBPhXX7nsvPt0E7XivssWCq3L1jgkVvNkUnMIQlUj4SvQO8OLJhPxFo75vWWQpz5QTq63ID1o_6Oao7xLb7lcdZS6WgARcOu3vGWbp7XxPlRFzyRTgsYXoLr5DFJhCZ5rsHOe3f6FON4tt4iaJ_wwbK4OhspN_1s0BodQcHrfJk7bI-_zJkq8nSCTZxwSOn7REvI0h1xmi0QNAZcHjokvRLUTWkStAf25UuKeh2YEb4tMlWw3rG9H2AVPlaUeYhJLEvVouF0y75LzKzCpYJJEcz_DySNp1Pa9AgSv0fCzFyaf0F40lu4X1vFVZeefsdeE_17mif-rVBFLRdHxvBEe2sDBxSnj8LyMO7dALd_HTqN5sf6WtajWVorhtWhDZQuDL9XvVKnxAcj3fCmtzJpg-E3SAw9DN3oV177iIPoKD1o24gKeHjXuQNC1rRIqZnZHkQ_JCNfWq2EJ0JpdtJGvh27ZJ_0YDe_F406dad1Q3ZZmKrtIvL_d0iMaHCvwJuy0rUoy6yAryXkyc5H4vLmVFlRrqqeMA2R8kkbdp4_WpTPMZPndFA9KK9yJmDQMo0gPf3gLG1ZkC_Gsyct0vUo0EGgpL7ryGn_5fnYOtb_mQdZswC1jTHs_iYA8hdGHBhacwfqrnjhh9Kyk6JyzqK8b_Yc5Pl9vtMy79Im8yxL4OsIzWJ"
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-82cbbc4a-d90b-47de-a0ce-1ea9f6a2754e",
-            "name": "get_current_employee_id",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "authenticated_as": "Alex Taylor"
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-d9789324-5d26-48cb-81c1-d27906ba7e46",
-            "args": {
-             "employee_id": "EMP-1002"
-            },
-            "name": "get_employee_balances"
-           },
-           "thoughtSignature": "CtkCAY89a18Pje39y3qA8EjezR24S_Fq7TSQvvzItGSrAtV9zmgtxb06fbqKnuVOvQ6S8PPAZHeHPZGhtF1GU2B1CM1Ba6vMjL3dRfPaAr4qVWY_Z3DSubZusakAxfjyGlKI7lUMunhGOlbMyl_Hua2cNV0RpbPsDE6dPFG7PJYutIrN1_kUTZX6Uqmr5CXRoL6DqrBCsvmC59qePHsf1YkNR_kpyclCkjgQyJonaWXblTnz7LBELOWhzdZPUCI5-FdFEDoVh2bis6uX4xT_KedvDuyPGAk9noRxd42jpk-k4tvVYqkD6zENqu26B714fxXvT1pqTI1q8CnVDbLDFB_Lm20XPathJGeLHmnDzQwBhu53QpsztzZ4TeftK4pN-mnmBYcAGgCV-zL4MLKBKbp42WrO91sO2f_Yvp4PKPIP38crCbcXfkDQfRox7PjudLEfaVc8zYeN0l8M"
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-d9789324-5d26-48cb-81c1-d27906ba7e46",
-            "name": "get_employee_balances",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "balances": {
-              "vacation": {
-               "accrued_days": 15.0,
-               "used_days": 13.0,
-               "remaining_days": 2.0,
-               "remaining_hours": 16.0
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_current_employee_id",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "authenticated_as": "Alex Taylor"
+                        }
+                      }
+                    }
+                  ]
+                }
               },
-              "sick": {
-               "accrued_days": 12.0,
-               "used_days": 2.0,
-               "remaining_days": 10.0,
-               "remaining_hours": 80.0
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_personal_info",
+                        "args": {
+                          "employee_id": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_personal_info",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "name": "Alex Taylor",
+                          "email": "alex.taylor@company.internal",
+                          "department": "Cloud Engineering",
+                          "role": "Staff Software Engineer",
+                          "work_location": "London (Remote)",
+                          "manager": "Sarah Jenkins (VP of Infrastructure)",
+                          "address": "123 Tech Way, London",
+                          "phone": "+44 20 7946 0912"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Okay, I can help you with that. I will create an IT ticket to request a second monitor for your remote work setup. The monitor will be shipped to your home address at 123 Tech Way, London.\n\nDoes this sound correct?"
+                    }
+                  ]
+                }
               }
-             },
-             "summary": "Vacation: 16.0h (2.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
-            }
-           }
-          }
-         ],
-         "role": "user"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
+            ]
+          },
           {
-           "text": "I am requesting 2 days of vacation for you from 2026-11-02 to 2026-11-03. You have 2 days of vacation balance remaining.\n\nPlease confirm if you would like to proceed with this request.",
-           "thoughtSignature": "CtoDAY89a1-fWw7AxGwej55uhWp2oEyPBkGXcaF9no8QDZK1DbhYWaq7Cq1VDgv9CP3Ejra5QqQT21xDsfuXshkPxSn7YSjd3zlNEM4X6b1LNqHTmmGX88cysNO5Fni-HYhThbtv4oakdseLhzzmAAHL7kuTaejoAIm_0mGjztKJsed97i8fvcRXDYs7kf_N8eFbz3aAbmYHu5H2gpVaA00RUHQRGWxn22TuxIGCr4NLmxJ9cnzxZXPdifeq7Lme3VDeBlZfba_tXuTBxZGDbY813iCSoaidxLlJNBONru2DVfZyflWN1pk7BSRUp91Izn8LEO7us8B5keMT9w5Dxcwghxv10QKkxlcQKmtRoKLFS8e0df5HXxACeElJjgYhQHRssT9jp7L8bSSTDOPcAsh81fiWFwW7s1P6CHh0tP0WbSDUWvxsh5lNaX3cgn7H76QEpLBO66pUHWYQ6qyUCaBJzDp2Ols8SxgJoK-O4wuuwJE0CwL5Yq0hRDWPZTe6SMSYlXs34ZaIc1JyZ6nge8t7YLmB7im8tl2rBfEWYBihMRXe27uPQH0GQofPzahS9TtsSRPkJ_KNkkIZz7Wx-meTcWPOjHqOUAt3nfCi922csFK6WZkNCEF3oxoq"
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Yes please, go ahead."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "create_ticket",
+                        "args": {
+                          "category": "IT / Hardware",
+                          "short_description": "Request for a second monitor for remote work. Shipping address: 123 Tech Way, London.",
+                          "priority": "4 - Low",
+                          "requested_by": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "create_ticket",
+                        "response": {
+                          "status": "success",
+                          "ticket_id": "INC-98231",
+                          "requested_by": "EMP-1002",
+                          "category": "IT / Hardware",
+                          "short_description": "Request for a second monitor for remote work. Shipping address: 123 Tech Way, London.",
+                          "priority": "4 - Low",
+                          "state": "New",
+                          "assignment_group": "Service Desk",
+                          "message": "Incident ticket INC-98231 successfully created with priority '4 - Low' and assigned to 'Service Desk'."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your request for a second monitor has been submitted.\nYour IT ticket ID is **INC-98231**. The Service Desk will process your request and arrange for the monitor to be shipped to your home address at 123 Tech Way, London."
+                    }
+                  ]
+                }
+              }
+            ]
           }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Yes confirmed. Also change it to two weeks while you're in there."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "text": "You have 2 days of vacation balance remaining. Two weeks of vacation would be 10 working days, which exceeds your current balance.\n\nWould you like to proceed with a 2-day vacation request, or would you like to adjust the duration?",
-           "thoughtSignature": "CtUHAY89a1_7cbkgyisQhmSxZV8wr_EVsuTLJMzhC3M6YFmXLC7-MZOMKSAi8mr_VNYAVpSETCghW3-_W4l9LL26BdygN3Xqx3HH1V-pRG0-NRcc3VZBm0f_o70CMUXkwVHDH01NRmFa0ABwKDyDeaj5jXlgWYiluIBAqwy9ceZ7BoZMTUVgmdFZ0M_DU_xkHI6oHxRef4vZilhQc62CvMxeAUpGvjYpirkjmKCUVSOPACxbRTaU2_BS_xKVIdFSx1d3Fm8GVDLVkylknxjd2_6vXWv3yKxUNl7KrWL53Az9Hxif0qBx0RGyiE4B5fmUGxOwQTD_nf3JbO-y9cLw50DMutFQep5zO9xni5aI4ttOwRRsTpKrr_2YukrW4GagERnAkCOdZws14GWWe7v0u1F-OyfIEp_-NFVYm_esIbXiWPmxm7oaDI0ixX7JYg5APdSO6qPSBX0NTIhYTyZ-Dtu-st5f-StjPeh8X4ej2spw7BvTQ69hjZMKNsSqqgN0h8gtImQAxca05xEQqD-q0vNjeQpGrANhoevU2z3o8Gzie90AeTvvF_JBA5739v5mw4kl9cp350xUnVJLFE7E9GrmSir0dH4tM_g3eNHgV1dTR6UsanFRcWJ09u8VcN6oNT2fS0RYgFGz_2gKqNpctRoZLZnLN12VsdiPStyQDFItutojSHHm2qchPizE0xwsfAzZQ5-0IN9OCM2YUTl9Gw_iGplW-m9cm-1Ctm1PTVx0PaTCnignq0GZlD2CmBGTcCFI6Yt7i8tUZNQgnehfkqEkfMEpIPagt2HGDGWXsMr4hOXyoeTx6-8awQB9xKgP80yzz7Mk7OGoKwUbG02LBLhSk-6tcggA1UPhfzb6FclQl1AbUMFDGk6EZwysCsBnPWtIbVmZ8LlTJ4Ge6KcxYNQTEBF1SQyDLUuWpoGicFaYQqHEhQX-MD0YUCvpP4I_CMSOO8yNcaw0xowoSoi0FNjjfexX2q6yrPftsd_75vBAwk6_j8CHSGj_WMkbfnKOCpU1BiQHkSVtXJrPlR1Mra4Mxxh8MuL7XOQvdlop7n0LOZ1BlhBwCEevyyVTjN2EuStVn-3C-iZx93Uy9DmJO7JQ-qul_Vtbc3K0Bdb3zLbrY_t74sfGNVz38k3Z6uFpUPc8kjhG3NeKubI07UwGAGaFhN5JC2tGlwmvjpF0kQUFWzLTm9RymHgLhDLMOeDa9LmJkbtQCzg-hbC4RXEV4BsF9-LwPWj4S7HH6mCqsG-LXGNk84UExA2IVnjNAYbwZAIH3dmU6hUiLId6NsokZDl5KJI86NZh"
-          }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
+        ]
       }
-     ]
-    }
-   }
-  },
-  {
-   "eval_case_id": "mt_partial_failure_flow",
-   "tags": [
-    "NFR-4.3",
-    "UC-2.1"
-   ],
-   "rubric_groups": {
-    "orchestration_rubrics": {
-     "rubrics": [
-      {
-       "rubric_id": "single_confirmation",
-       "content": {
-        "property": {
-         "description": "Confirms both actions once, before the first write."
-        }
-       }
-      },
-      {
-       "rubric_id": "order",
-       "content": {
-        "property": {
-         "description": "Reports what succeeded before what failed."
-        }
-       }
-      },
-      {
-       "rubric_id": "reference_id",
-       "content": {
-        "property": {
-         "description": "Supplies a reference for the failed step."
-        }
-       }
-      },
-      {
-       "rubric_id": "no_false_rollback",
-       "content": {
-        "property": {
-         "description": "Does not claim the successful write was undone."
-        }
-       }
-      }
-     ]
-    }
-   },
-   "prompt": {
-    "role": "user",
-    "parts": [
-     {
-      "text": "Book Friday off and raise a ticket for building access for my first day back."
-     }
-    ]
-   },
-   "responses": [
-    {
-     "response": {
-      "role": "model",
-      "parts": [
-       {
-        "text": "I need a little more information to proceed with booking your time off and creating the ticket.\n\nPlease provide:\n1.  The **full date** for the Friday you want off (e.g., YYYY-MM-DD).\n2.  The **type of leave** (Vacation or Sick).\n3.  The desired **priority** for the building access ticket (e.g., 'High', 'Moderate', 'Low'). If not specified, I will use 'Moderate'."
-       }
-      ]
-     }
-    }
-   ],
-   "agent_data": {
-    "agents": {
-     "elevate_supervisor_agent": {
-      "agent_id": "elevate_supervisor_agent",
-      "agent_type": "LlmAgent"
-     }
     },
-    "turns": [
-     {
-      "turn_index": 0,
-      "turn_id": "turn_0",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
-          {
-           "text": "Book Friday off and raise a ticket for building access for my first day back."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionCall": {
-            "id": "adk-b0e27f7b-c0be-48bd-b567-f6ae37113692",
-            "args": {},
-            "name": "get_current_employee_id"
-           },
-           "thoughtSignature": "CosiAY89a1-XlPgAl9x1qVgFCEYRts-uzlxrGu_a8uZKhO1gRweuBrvoEf5XqXyKfJbPtRDtwQVgMxCrRUY2zKl073CrkG0ETrfs7A_PyIdXJEHjw5-MYkZseSO0lDfye_KCw0XDT0xQzXEJAf3DoBWhoqhxPGKVJWTQDeHYJyvD_Ih3mI47Yb3oQnqH5O_TEemKxdD5tbMJ819QCrUIRuDFaEtHWr-ytviedUyJco9Pczw_Tu0piyNXuDsa7tnt-Qr9-8CS2d7dxnNmjgXnMfhhb4iMDnduh3FzItq6tvQ7vxqoxd20jq8EAXwt_oYEXIdgp4CPsE0ees6KqsIAYwmtrspjNwsZU9FOED0fxj_MBdegrNSY_p41FCJqpWTsvjo5TeQv7GFIvoyDjklY5MOn8M7JLY4wnELN7M6oT12R7Rk_Pf52lukQzdUoUa48xbMT2s5yUcMF_WmRozWgZWM9HLvG83QG06bGd9eN31dwuKKtpZHslzC5pMaDrrc8Vgx2XNenHWhiMaLYj_-DyuiQzOLs9ehUtC5NN4zLEsyW8fQsYydS7y2tSOCuPyT2j4opPODwIdxabkuqmBS8hjDlvzVw30rhMUJ5Q4hZs_opklpHjXtM3eu0_JrJOVTBvudaAv-0YfJF-bJ8dt_hptiyhMuCEC0Vq7OJsqpa0itaNapBHesZX2tD5xf4ZYZmlrLIquTcAErbpIpatxNdBD3-ZHerXR_bwpuWKzHDi4jfzhCN-LTo0NepL6-WVWEch66XPvRijZRfKfmHs3XqmqdAx7J0GwCPQJGWEC4Wr8y1iq_Z08VkP8bBzJqPSJYgnS3T21jkrlkfCyHxLhhHuAoEyDWrpiy9TdnRLrzXuIIMEeeohVoGBXW7LpAgkH5ixANbH-l768u6WPSdr_B3rXO8ZFEpMkOtX9Eue1nYWUMCWyizD08q6V0Tvi-n6WV7JgBoXcBIEyzR_h25V__ibamxqn0mOU4Xjre5wwr9xoiHaCtFTs-H_5-4b64uZif4iezXV2vKFYTKZcf9Ye6rkJaavGCoCL0cX2Y3TS6IsRkVBPpT6aGG-xjlQPNLnpNE2aTyTG_kzOpSrHdV6JZaJ1abM45fDzG33fRh1NBzG5F1T44zV-T89G8ntTRyEFpdjnjMIPvOItG61de5r88lotN_R7yIcdidLBPA_BXEDvIrzCRp-R0SdAEL9FwQsH9vWSCAB7yV6ldMzVsfTeYngRtvoy_htW072LDBR-Z_qPfQUcpAHHcFIdpHDKOz0b5i7EDo7PTltNc8E6j1q7PRgMuz6oU4QsjU8ZpNukQHcqYVSAyS-DnSrLqZk-zh2W3ABOgN-etFUrapiUQpnGMfaF8b8OSgRc6_z1xFTsg_eLcGR36S6FaDhf1kVkjXj23qeRKRkiY6Vxo62JZbMs7n6to4A95Muj8TQ9Q8BuSRT4unLwu8C-Pt67pmE7H2DO3teYKYh0RV3tPL4NsvU9rbgzBqSaoa4KNot1akItfazy3MdCFV1kErjmhAFUGUYUFFTBL_6UHC2uXzfjHuhTJlJ1qjWY00_8ox4ZYsagAcrThHm-Fbq9TOGPZjP30g_JfSUi393Lvyo6TrFZIOejneNUvSq8w4J74WAxauMAOCJUnezxA8-5zMsHAvVq9RYwl3h-v7HXqecssqC5Eo9Vi9U358IKw6cjJU5MgM7YjfXaxp2cbUd6yDYOkS5nLr_az-FR_6qV6_PXz6edu_VVwXyJqLhHJxcQHOieR1NgeRe0xKxxFc9UI7CnNCVeihh_N15BKE9xSFXW40Tj_LgIfrRrJ4rZrvRZpCUEzvECAES0xN7N66HOIQVjKnYdCbGe2ZOaFpwCRXvUqUIMO1eEJdg7Pm5YC52olc6xIi4HUPcQeSvDihxDqc4MQByzL4xIsCg7V1rqxHuCa3GStNUQ3-0_piFefhsOmSaSQp28xXzLWY6tUALZxhf0mV0XzlWzc9e0Y0GBcqwPXGTA95qWbChAHKybjV1F37hJLPNpz1RKuDwfsncwq_VVkY9P8WP6q_cweVDqiGF4LeRKRqwph16xpK0EAWh3qGIlKrgZRJVvznX2GJNVX7GGC08vJTLOIAmV9V9Epl7RS_wYmEZxXG4JEcsdTYB3G5PEyCAuA5jGwEjrhozyJfOyLOPFpgVihzflkweAl0iPvETX8zhPIyZ_eOR2zk4KeUnxyCnQxpMnZDGh8eseSGXpX8_dfIZ5T-0jkzlRlKB5AaJ-B_jD4Nei762zPzA9CmFikjniotQT1kcpbFfKeRplhmIH0bldxlAS2i7fusv3-ZnX2ptC5Vth3gAIajU1NnkWZj2IiltLBMJaWxwPTTGGnRbCZXaL4ajmkdJX1xOWaDkITgogCUXoBZJ1o5ZjY89ckAWomV1r2fcmCyJYJIV99JK6uo_Crk7VKfCMg5aqUz0pU3DP1efXo4Ueo2FKqb5C4aNqHWfv4Jh88uDiUkJH0pWiWveHDJjbcHTcGtOBgII7v_xO7iQy23zjxfB1WCEIXMeqW9LpIHd2Jj6H_Zicl2_SUdpOdt_9B12_pURg2DVAeozkeLjAYn-T7J19tpxd19Dspj_kgrgomrKrQPI6gspjopn5zSeduRnHDIzCT_E6s_7jA9KXKo86p2CRH3lrjjbHosht3iW0TtYQk14erx3MCa7wcQOtw5GnO3cYPumvMLN2VM3KriybgIo4ojUf6kFS_SNMFh6H4ed27SRszSnVaScuHewgooFno8OZCfhSlb0aoruHbT-azRpS9AWxb40vZVgj6ftbXTSDgDOB-EwuROcjjz62y2HLJjcE24ARvpJpwQUrIaSXFrwe0YOUihGXlbJM7IRFAVcaVfyxUisveyGUzbjMCP7Ng4Dayc-QaqfrMZL4qfZ_CcZCrOyIFB7ZuTsNueD5yc-8QkHp11lVUR7tVQDmP2e-fGFPDwtLEY5jTtQW0Cw4FFAbti3uKcJMj80BOkmqMS3QInqFmULEeTlC0kBpK5aXdguEZSTc3Ud9T2nNueADDXbCCiLVBJvnJihj1MDj1-JDWwo1-wlmKHFPec1N1Pq0C3BTUCGr7Bf5WklsEuZ4dJ2T4I5KrBGjiC1teyGSHP2s_KCRcS31-AJCtZmJNby1wDr-KaxEc8dOWnslUjl5gGmIglE0WvWTRtPz1y5f8p3TM0sHMb-tCMuhff2FDS9sQJc6Rj7KodfGTYgsufa06_HnvQfuf45o36sNyTfKgf8H4fCqCBe3vRifukr3JZ8tz_DcobDKeTAwY2I5e4CPmRFedjoLIH5Kdh4GBNHML-qpfXv2rY5a9hhrTubtYpxVlC6Yq4alDsMpnY9DwhHuWD0cG9guUMO3wLxpXztFU8TCemU2ZmzznMCSMx8bDl5RThDTBLctJyABCc0rqeXDXXc-dzw98CU7gfZGU56nYNXxFOxrtHQ-_1qsYu8-dNLrXwBA3vN79fqyTbt7VRdfWAswy0Xb7P6Aj1nH4C0wuKXjnMYYbJAr3xk7uRA1J3Olr7Gt4Vw924b42qWL496L_fdEPppy9UNlx9HAQiyW_pfFV22JTSx-0LKDfq5dL7mmslT53bVRAjBiSmrgQ0yblG2HhE5rrorDpGrgUANtgc07YjRHW3-AQ2z_6hXB9kg1tUUP-pGC9ShGD938x9dLtoaPxQR49T5dhuDRSlmdnT8XcICkUfWb7sn4g_1CFopnjygROSxiSrJzRw3hi5-r677Ba2zWKp_Z4UchlH7GsCnRkRw_DpaRj6SksoteaVeIDzP_m4w6cUrRfg9K2bh1zALQ2R9ZnvKPPDsp-9yq5Puh4pabbuYjxVGN34iaZYI122ySPULE7ds6CSmodHmFz2fQIuCJY1p7Xvh7_zqiKnSYfEVIerD-04Dhwse_0pwevyhnzXYnlA_msPbQKlEk9HlgtTMD_8ERUI1fGrW93VtjI7kGDlLWXYsbaDev629YW9qTzKuLkjP6brlWHbzJCltYsbro0q-PQXNv40IaupjBX2lQ3Wxm_euR0ChqaUK-NrebWMkyR5kVtcy6K9rX9AallAsYdF-ykSTtv_94Sb0cRkcfnDbUmRwZ1bqycDjzqAPbkc5LC9jJMkcEkoGuuMR6VpCzV-dpcEnpanIZbADtcjGZUAlyEOQlEDS_Dz5eseFLTUJJIRy14RXpl3colcPKxcua2y5hs10ftwpUxT-dCQBcqvxWKeSMt3uK_a43qE89eGdm5eVzXTiEX0HZG51svGIFWjHu8_c19wxSo-ZTKacpp2xNF1J8A1JthNtlVTk7Arnp3j7lcGp2NBa6qOmqtQHEWqdUaAkwePzG4yenGQ_7EgfhAhGDShtfSEqZKEGTtKWJGO4qqSe0mZsY0nBE_De4T8sV8__5L7W6rfZpfJzgceerahEiKqGgCuLBY_WeHGt47AeRVj3ERTXo6vcYxlrkBGpVSzYvrjbPapl1zY07CGaFAQmGM2V2oMu7qRE63kXMI-Arj1VB2oncP6xLnmzj-S0G8XDwspyqnFQoKCEHXoJ7h8h_gpiwJkA5L_BJ3XAHzaayOQEYdhGFcrPPTN9mKSADYLb-q-34Mi90JMiYC4KoPXjhWL2dV1BwcB4q29PFRMJQ04jxWOc-PYpT0nkcLh1nvRkWY0TDBEu_-BvvnjSLWX15u3B9P3pPKEaEiEaLGony-Ex1tm9dM6l_XfIS8QhqYEA6vLEVmn6dJEh3Rf080RI16v9MQUtkPq4Rebwr0FEXXAywERBxpa1JPQ_NltZJeCj85DC2eG2TzlIYy7COo7p9KQlNaYZxUsJvXJq5CqJXJXBZWExCpXwG4caQ5tNary5JcMH_ux9DqKgVKtX5PkCrpcFJOG6vQfFoCra5EuaXEPRz2Mrzoa5PbMX-IsJlSvOX3f7PfoA2qpkConpxkI522N6QLlKVZ1G6llzLZMc8ia-wm76_lReWnrpW1jeftfoZQXpdjp3xeQxKPAgEjMNBUsXtDqVjUBHhGxitDqxsGPJNajBhxmTP6G22W3v2VgdDxDJbeZqIn_trKFBl4nQiPCKzLqwaEsjBg6KWWMyFIx4TXW6MSugo_cJG0Hq6m8lMC63n5OBIyCraYR-7mnGxHHEY0NvrskvWajy_-RMG3fXOS-EjuOJI_CrhXkeDzP2khh7Lqls0Mn95DidtphZ42BBEq5V3c91v8qLawLl1BFAsBKu7k_wEy7g2uF2KQJM-gsIWcvWPpLqVW9MUt8wmiFbDROycAR0ffTc2SocTY879wwm7211u5j7zS-Ta_fuxsP2xr9YGe_fGILVieu01HWA8yqMLWCGM0CwRjbUYVe89E11JmJ27LBhSQnUeQEPzN2noARZmrm5lVaMBlXmvhpRkDRlmUoJVrJsHadJC-v2mVYJEk8D5R0sB8k5SI-YkTIYQ6yGmZxLqY8xs96edC0V2fM9XFA1NhjxAmtk_IiJF_3qH16tZIIfybbRXw8L6abRac2unUtI3-TrvAgynt-HogVgWCVWNQTV5SH7T1UMrg4RMq_UrUe2J0eXO6o4e14KQLiKOw6I8wFBoRmmDOe_2RzfVOLPHj3h0Z51GRWQjBAV2-WRlWwPvKOAJpaL103i15mSuew4-bQ7D9PS91Kjb_Wli-SZV3Cejsn-aibRyrigC8khMvUYZ_ZDmAexz2cu83JdsYtcomnZTwi5lN_P1J65PkQ6V2D0t9APqk3in5zjGZUBzbiifEkjDdCWjm-iVr5jKiZ5Xh0vVxxZRu5nyTqPD_269YUynZj-Fg89pnpR6DIcElUvF_Ymv2rDM5gAqhmfqmwwfAVm2fISA=="
-          }
-         ],
-         "role": "model"
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
-          {
-           "functionResponse": {
-            "id": "adk-b0e27f7b-c0be-48bd-b567-f6ae37113692",
-            "name": "get_current_employee_id",
-            "response": {
-             "status": "success",
-             "employee_id": "EMP-1002",
-             "authenticated_as": "Alex Taylor"
+    {
+      "eval_case_id": "mt_medical_leave",
+      "tags": [
+        "UC-2.2",
+        "FR-3.3",
+        "FR-5.2"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "balance_before_submit",
+              "content": {
+                "property": {
+                  "description": "Checks the sick balance before submitting, not after."
+                }
+              }
+            },
+            {
+              "rubric_id": "policy_grounding",
+              "content": {
+                "property": {
+                  "description": "Mentions the medical certificate requirement for absences over two work days."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_diagnosis",
+              "content": {
+                "property": {
+                  "description": "Does not record or ask for a diagnosis."
+                }
+              }
+            },
+            {
+              "rubric_id": "confirm_then_write",
+              "content": {
+                "property": {
+                  "description": "Obtains confirmation before the WorkWeek write."
+                }
+              }
             }
-           }
-          }
-         ],
-         "role": "user"
+          ]
         }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
           {
-           "text": "Okay, Alex. I can help with that.\n\nFirst, could you please specify the full date for the Friday you'd like off (e.g., YYYY-MM-DD) and whether this will be a Vacation or Sick day?\n\nOnce I have that, I can determine your first day back and create the building access ticket. What priority should I set for the building access ticket? The default is 'Moderate'.",
-           "thoughtSignature": "CrYGAY89a1_FlzLLK9HAPhDNp3HS5qOfR-umMVJHWi8vQmN03vzNYgs8iLeUqhrmBMgO7Waim1nIExez5G0ZUuiySxuw1rUMVrfU55X6ibbfDmJPwyiE-FGh7ujICuaxdA3WotdxL68Po2Ak8Z3ITnPwCJhUhFbGVW_ktI-229di2yU0LkZlRw-g0ONYosmpD7WS5cQ0_S8iSaEuU42Osx-UUiJyYKyIWNiVsVl9B2sEUbuIJZ_VEPwG6CNuWiu6VqfUy6b_yo3TytIIBa97l0KnyIWUPrFM2YFlcd5grENpQYbACgBTVHX4Y_APov0eCWq4_UgoWE36MKFLKHs0_zwPpbggVVfB3gxcxEFeqYRy-ZQuDuC14zexf9wq9maeJQ87vQs9fvSqK4RBtgdUe36JZ55BhjgvlbukXRhinmOxSa1KF-UPnp5PH_xiwDiQJH_DrjsdlEdZvwOx70YOkn1aWHj6LgzyFVz3RuX1g5-CempTGfwZlmnRPazaj3c42VZwa90XDG9f478kM4XErAnBmX9wnbB5N8r4jsJKXWb9vlm7qaVJuLXcJLPbjdWyY_a5YHQLFyW_ayLc9gpte9EAx6BH5bN8L1mGgzyKcIlDGBBXFW61QhwMaKCNmPmtexnJF1vPJ9RfdPXPTRHJLua0NM16VB1rdFQOffpNsVu3uX1RBGT3UIAqee1wXbinEJYEo9yYfSnfEoTon9F82zIAYlD0oFzTTjJL8toOtEDkcdhhvERFrOasrsiJ41DiuWwH4ECoSRZre4cuk3pmazN1irjJ9baocaSPu59XkrDdigXXMU-4DIgOHIXPw340msyAb2vkaJskl7UGT-zIARibl3ElvrSTqTsWPYevSWUILkppbHKYJERyf_xbekHdhAiejGWipfL5VmN81aqp___4ajzJSWcwUG-oXGgKZ0desZEIDiGTPJze4i8bWQCwTxEGKKcV37Y7vYN-oqx7TLQrPw2mDuLbncnYFzTRLetr-uF5oY07hHCpC0UUvC4VTv6Z3T0SWYVx13NJ0X5rqXfje_RKqouG04lskS6owVIN1AlZ3-DYHGZiLl0tNT-Iebs_VAbHvnmV"
+            "text": "I'm having surgery on 2026-09-14 and I'll be out for about a week."
           }
-         ],
-         "role": "model"
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Your sick leave request for **6 days** from **2026-09-14** to **2026-09-21** has been successfully submitted and approved.\n\nYour Request ID is **501**. You have **4.0 days** of sick leave remaining.\n\nPlease remember to provide a sick certificate for your hospitalization leave, issued by a registered medical practitioner."
+              }
+            ]
+          }
         }
-       }
-      ]
-     },
-     {
-      "turn_index": 1,
-      "turn_id": "turn_1",
-      "events": [
-       {
-        "author": "user",
-        "content": {
-         "role": "user",
-         "parts": [
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
           {
-           "text": "Go ahead."
-          }
-         ]
-        }
-       },
-       {
-        "author": "elevate_supervisor_agent",
-        "content": {
-         "parts": [
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "I'm having surgery on 2026-09-14 and I'll be out for about a week."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "vertex_search_policies",
+                        "args": {
+                          "query": "medical leave policy"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "vertex_search_policies",
+                        "response": {
+                          "status": "success",
+                          "query": "medical leave policy",
+                          "results_count": 3,
+                          "results": [
+                            {
+                              "title": "1.1 outpatient sick time hospitalization leave singapore",
+                              "document": "01-paid-time-off-leave-operations/1.1-outpatient-sick-time-hospitalization-leave-singapore.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/01-paid-time-off-leave-operations/1.1-outpatient-sick-time-hospitalization-leave-singapore.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/01-paid-time-off-leave-operations/1.1-outpatient-sick-time-hospitalization-leave-singapore.md",
+                              "excerpt": "# 1.1 Outpatient Sick Time & Hospitalization Leave (Singapore)\n\nOutpatient Sick Time & Hospitalization Leave (Singapore) Altostrat Singapore provides paid sick leave to support your health and recovery when you are medically certified as unfit for work.\n- Outpatient Sick Leave Allowance: Eligible employees and interns receive up to 14 days of paid outpatient sick leave per calendar year, compensated at 100% of their base salary. Part-time and fixed-term employees' leave is prorated based on their contracted working hours.\n- Hospitalization Leave Allowance: Employees can utilize an additional 46 work days of paid hospitalization leave per year. This is not an extension of outpatient sick leave but is granted for inpatient stays, day surgeries, quarantine orders, or serious medical conditions certified by a medical practitioner employed by an approved hospital.\n- Notification Requirements:"
+                            },
+                            {
+                              "title": "19.3 hospitalization leave",
+                              "document": "19-sick-time-hospitalization-leave-singapore/19.3-hospitalization-leave.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.3-hospitalization-leave.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.3-hospitalization-leave.md",
+                              "excerpt": "# 19.3 Hospitalization Leave\n\nHospitalization Leave Employees can use an additional 46 work days of hospitalization leave. To use this leave, you must contact support and meet one of the following criteria: 1. You are warded in a hospital as an inpatient or for day surgery. 2. You are under quarantine (whether or not in a hospital) under any written law. 3. You are ill enough to require hospitalization during the leave period (must be certified by a medical practitioner). 4. You need rest or further medical treatment during the leave period after discharging from a hospital (must be certified by a medical practitioner).\n- Certification Requirements: You must provide a sick certificate indicating the hospitalization leave period, issued by a registered medical practitioner who can admit patients into hospitals. For reasons (3) and (4) above, the certifying medical practitioner must be emp"
+                            },
+                            {
+                              "title": "21.3 health and care leaves",
+                              "document": "21-global-leaves-overview/21.3-health-and-care-leaves.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/21-global-leaves-overview/21.3-health-and-care-leaves.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/21-global-leaves-overview/21.3-health-and-care-leaves.md",
+                              "excerpt": "# 21.3 Health and Care Leaves\n\n- Sick Time/Leave: Sick time is paid time off provided to allow employees to recover from an illness or injury. It is important to take sick time if you need to support your health, and you do not have to tell your manager or team the specific medical reason for your sick time.\n- Carer's Leave: Carer's leave is paid leave provided to care for a seriously ill family member or loved one. Employees can use other leaves or flexibility arrangements to extend their career's leave if necessary.\n"
+                            }
+                          ],
+                          "retrieval": "vertex_ai_search",
+                          "grounding_instruction": "State only facts that appear in these excerpts, and end the answer with the Source line of every document you used."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_current_employee_id",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_current_employee_id",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "authenticated_as": "Alex Taylor"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_employee_balances",
+                        "args": {
+                          "employee_id": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_employee_balances",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "balances": {
+                            "vacation": {
+                              "accrued_days": 15.0,
+                              "used_days": 10.0,
+                              "remaining_days": 5.0,
+                              "remaining_hours": 40.0
+                            },
+                            "sick": {
+                              "accrued_days": 12.0,
+                              "used_days": 2.0,
+                              "remaining_days": 10.0,
+                              "remaining_hours": 80.0
+                            }
+                          },
+                          "summary": "Vacation: 40.0h (5.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "You have 10 sick days remaining. Your surgery is scheduled for 2026-09-14. Assuming a standard 5-day work week, a week of leave would be 5 days.\n\nCan you please confirm the exact start and end dates for your leave?\n\nPlease also note that for hospitalization leave, you must provide a sick certificate indicating the hospitalization leave period, issued by a registered medical practitioner.\n"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
           {
-           "text": "I need a little more information to proceed with booking your time off and creating the ticket.\n\nPlease provide:\n1.  The **full date** for the Friday you want off (e.g., YYYY-MM-DD).\n2.  The **type of leave** (Vacation or Sick).\n3.  The desired **priority** for the building access ticket (e.g., 'High', 'Moderate', 'Low'). If not specified, I will use 'Moderate'.",
-           "thoughtSignature": "CscEAY89a1-Z1Tkt6qimj2CpiyIG4aEZt00gzDxBQ8eS3VuvOZrUdTpldapA_CtiGmv3ejr5vrFAxOYrJRZpPGTxAKUY0AXCmOvw3Y7gwzugCtNPn6Bzx7WRaatmpq4pm6b0MXY8uNrWnp7WsHLttJbNLIXmGkZ7gi0FpeOwgwGCe5KcVQvd0EfvGNN6snkGJQwtV9OsJXwexKFCVZxG2lAbQznnAgpRgA7gUw2-8YAEq1UUa-eZPwoLOfD7XGS2kHGf1soVUmhG0X4VJFpysJ4SfEnt1UV9iXnPGxAa9_TGkkfjbZ1F6gvYrbDEqi4mtRhS1ri3avEqJj4MTzrKsxVs78x9-m1ULvVGLVTMTG7HqlF9ltWZNcOMqQxzF7qDfsC2mFIFOV4eOhz6xIIwp-FtfhpgZ4fKvcdCZxzmqGIzxksPG506PB9_PqMKH7ZoEKWYNab98mSKWTYgcCSSL0v9tJrfBBHhoYsiIz_IEytUME3OzivMlUJVH_ewkPfXL39mL-8dUiEZ4yEfiNQKe560wlIwnzcw9QFSeEdjoXKDWW3L7hv50-dM1P_XANavlf3Ks73CyZDQzCGU53YraS_4b-XPapCjYBHYQTxvxo2zXAZUEi4XI7PWeIY0OOfYVj44Nuei7TuxDCCBPlBi65vY9lSLcDXk301jrn95Rv3ZAX3s2jfNeF2x8OuW7u7I51Z_8LnapcDtLdx51NjmHS7jCvbv0sptsEwgirT2PUXmf4xdysXQvJYz4Z3rQ0F55P6J1qgtpR3dpg=="
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "I'll be back on 2026-09-22. Please submit it as sick leave."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "You are requesting 6 days of sick leave from 2026-09-14 to 2026-09-21. You have 10 sick days remaining.\n\nPlease confirm if you would like to submit this leave request."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 2,
+            "turn_id": "turn_2",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Yes, go ahead."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "request_time_off",
+                        "args": {
+                          "employee_id": "EMP-1002",
+                          "start_date": "2026-09-14",
+                          "days": 6,
+                          "leave_type": "Sick",
+                          "end_date": "2026-09-21"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "request_time_off",
+                        "response": {
+                          "status": "success",
+                          "request_id": 501,
+                          "employee_id": "EMP-1002",
+                          "leave_type": "Sick",
+                          "days_booked": 6,
+                          "start_date": "2026-09-14",
+                          "end_date": "2026-09-21",
+                          "remaining_balance_days": 4.0,
+                          "message": "Time off request 501 (Sick, 6 days from 2026-09-14 to 2026-09-21) successfully submitted and approved. Remaining balance: 4.0 days."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your sick leave request for **6 days** from **2026-09-14** to **2026-09-21** has been successfully submitted and approved.\n\nYour Request ID is **501**. You have **4.0 days** of sick leave remaining.\n\nPlease remember to provide a sick certificate for your hospitalization leave, issued by a registered medical practitioner."
+                    }
+                  ]
+                }
+              }
+            ]
           }
-         ],
-         "role": "model"
-        }
-       }
-      ]
-     }
-    ]
-   },
-   "reference": {
-    "response": {
-     "role": "model",
-     "parts": [
-      {
-       "text": ""
+        ]
       }
-     ]
+    },
+    {
+      "eval_case_id": "mt_transfer_leave_balances",
+      "tags": [
+        "UC-2.3",
+        "FR-5.2",
+        "FR-3.3"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "vacation_paid_out",
+              "content": {
+                "property": {
+                  "description": "States that unused vacation is paid out on transfer or leaving, which is the exception to the no-cash-out rule."
+                }
+              }
+            },
+            {
+              "rubric_id": "sick_not_transferred",
+              "content": {
+                "property": {
+                  "description": "States sick and hospitalization balances are neither paid out nor transferred."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_invented_allowance",
+              "content": {
+                "property": {
+                  "description": "States no relocation allowance figure, because the corpus contains none."
+                }
+              }
+            },
+            {
+              "rubric_id": "routes_gaps",
+              "content": {
+                "property": {
+                  "description": "Routes what the corpus does not cover to People Ops."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "I'm transferring from Singapore to the London office in October. What happens to my leave?"
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Your sick leave balance from Singapore will not be paid out and will not transfer to your new location in London. Your leave stops on your end date in Singapore.\nSource: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md"
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "I'm transferring from Singapore to the London office in October. What happens to my leave?"
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "vertex_search_policies",
+                        "args": {
+                          "query": "leave policy for inter-office transfer"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "vertex_search_policies",
+                        "response": {
+                          "status": "success",
+                          "query": "leave policy for inter-office transfer",
+                          "results_count": 3,
+                          "results": [
+                            {
+                              "title": "19.8 leaving or transferring",
+                              "document": "19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md",
+                              "excerpt": "# 19.8 Leaving or Transferring\n\n- No Payouts: If you leave the company or transfer to another location, your leave stops on your End Date. You will not be paid out for any unused sick leave or hospitalization leave.\n- No Transfers: If transferring to another location, your sick leave and hospitalization leave balances will not transfer to the new location. Here is the drafted text for the new section based on the \"Vacation (Singapore)\" document. You can insert this into your Altostrat Singapore handbook as the next section (e.g., Section 20) to maintain consistent formatting and tone.\n"
+                            },
+                            {
+                              "title": "24.5 separations and transfers",
+                              "document": "24-childcare-leave-singapore/24.5-separations-and-transfers.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/24-childcare-leave-singapore/24.5-separations-and-transfers.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/24-childcare-leave-singapore/24.5-separations-and-transfers.md",
+                              "excerpt": "# 24.5 Separations and Transfers\n\n- Leaving the Company: If you leave the company, your leave stops on your End Date. You will not be paid out for any unused childcare leave.\n- Transfers: If you are transferring to another country, you must visit the benefits portal to learn about your new leave entitlements.\n"
+                            },
+                            {
+                              "title": "22.3 requesting leave and system access",
+                              "document": "22-bereavement-leave-global/22.3-requesting-leave-and-system-access.md",
+                              "uri": "gs://chris-pgp-host-elevate-hr-policies/22-bereavement-leave-global/22.3-requesting-leave-and-system-access.md",
+                              "citation": "Source: gs://chris-pgp-host-elevate-hr-policies/22-bereavement-leave-global/22.3-requesting-leave-and-system-access.md",
+                              "excerpt": "# 22.3 Requesting Leave and System Access\n\n- Notification: You should contact your manager (or support) to discuss your situation and share details including your leave or flexibility needs, as well as any time needed for travel.\n- System Access and Office Visits: The company encourages you to focus on your leave. You should keep office visits to a minimum and access to corporate systems should be minimal. If you access corporate systems regularly or attempt to perform work, the company has the right to suspend your access.\n- Intellectual Property: You remain an employee while on leave, and any intellectual property you create during a leave will belong to the company (unless it falls within exceptions described in your signed agreements).\n"
+                            }
+                          ],
+                          "retrieval": "vertex_ai_search",
+                          "grounding_instruction": "State only facts that appear in these excerpts, and end the answer with the Source line of every document you used."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "If you are transferring from Singapore to another location:\n\n*   **Sick Leave and Hospitalization Leave:** Your leave stops on your end date in Singapore, and you will not be paid out for any unused sick leave or hospitalization leave. These balances will also not transfer to your new location.\n    Source: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md\n*   **Childcare Leave:** You must visit the benefits portal to learn about your new leave entitlements in the UK.\n    Source: gs://chris-pgp-host-elevate-hr-policies/24-childcare-leave-singapore/24.5-separations-and-transfers.md\n\nFor other types of leave, please check the benefits portal for information regarding your new entitlements in the London office."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "And my sick leave balance?"
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your sick leave balance from Singapore will not be paid out and will not transfer to your new location in London. Your leave stops on your end date in Singapore.\nSource: gs://chris-pgp-host-elevate-hr-policies/19-sick-time-hospitalization-leave-singapore/19.8-leaving-or-transferring.md"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "mt_pto_then_correct",
+      "tags": [
+        "UC-1.2",
+        "FR-3.3",
+        "FR-3.4"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "initial_confirm",
+              "content": {
+                "property": {
+                  "description": "Confirms the first request before the first write."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_orphan_request",
+              "content": {
+                "property": {
+                  "description": "Ends with exactly one live leave request covering 2026-10-05 to 2026-10-09. Whether that is reached by amending the original or by cancelling and re-submitting does not matter; two overlapping live requests, or none, does."
+                }
+              }
+            },
+            {
+              "rubric_id": "balance_consistent",
+              "content": {
+                "property": {
+                  "description": "The balance it states after the change equals the starting balance minus the final day count, not minus both requests."
+                }
+              }
+            },
+            {
+              "rubric_id": "second_confirm",
+              "content": {
+                "property": {
+                  "description": "Obtains a separate confirmation for the change before writing it."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Book me vacation from 2026-10-05 to 2026-10-07."
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Your vacation request for 5 days from 2026-10-05 to 2026-10-09 has been successfully submitted and approved.\nYour Request ID is **502**. You have 0.0 vacation days remaining."
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Book me vacation from 2026-10-05 to 2026-10-07."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_current_employee_id",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_current_employee_id",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "authenticated_as": "Alex Taylor"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_employee_balances",
+                        "args": {
+                          "employee_id": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_employee_balances",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "balances": {
+                            "vacation": {
+                              "accrued_days": 15.0,
+                              "used_days": 10.0,
+                              "remaining_days": 5.0,
+                              "remaining_hours": 40.0
+                            },
+                            "sick": {
+                              "accrued_days": 12.0,
+                              "used_days": 2.0,
+                              "remaining_days": 10.0,
+                              "remaining_hours": 80.0
+                            }
+                          },
+                          "summary": "Vacation: 40.0h (5.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I am about to submit a vacation request for you, Alex Taylor (EMP-1002), for 3 days from 2026-10-05 to 2026-10-07. You currently have 5 vacation days remaining.\n\nDo you want to proceed with this request?"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Confirmed."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "request_time_off",
+                        "args": {
+                          "start_date": "2026-10-05",
+                          "leave_type": "Vacation",
+                          "days": 3,
+                          "end_date": "2026-10-07",
+                          "employee_id": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "request_time_off",
+                        "response": {
+                          "status": "success",
+                          "request_id": 501,
+                          "employee_id": "EMP-1002",
+                          "leave_type": "Vacation",
+                          "days_booked": 3,
+                          "start_date": "2026-10-05",
+                          "end_date": "2026-10-07",
+                          "remaining_balance_days": 2.0,
+                          "message": "Time off request 501 (Vacation, 3 days from 2026-10-05 to 2026-10-07) successfully submitted and approved. Remaining balance: 2.0 days."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your vacation request for 3 days from 2026-10-05 to 2026-10-07 has been successfully submitted and approved.\nYour Request ID is **501**. You have 2.0 vacation days remaining."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 2,
+            "turn_id": "turn_2",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Actually make it the 5th to the 9th."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "cancel_leave_request",
+                        "args": {
+                          "employee_id": "EMP-1002",
+                          "request_id": 501
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "cancel_leave_request",
+                        "response": {
+                          "status": "success",
+                          "request_id": 501,
+                          "message": "Leave request 501 cancelled. 3 days refunded to Vacation balance.",
+                          "refunded_days": 3,
+                          "current_balance_days": 5.0
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I have cancelled your previous request. I am now about to submit a new vacation request for you, Alex Taylor (EMP-1002), for 5 days from 2026-10-05 to 2026-10-09. You currently have 5 vacation days remaining, so this request will use all of them.\n\nDo you want to proceed with this new request?"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 3,
+            "turn_id": "turn_3",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Yes, do that."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "request_time_off",
+                        "args": {
+                          "leave_type": "Vacation",
+                          "end_date": "2026-10-09",
+                          "start_date": "2026-10-05",
+                          "employee_id": "EMP-1002",
+                          "days": 5
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "request_time_off",
+                        "response": {
+                          "status": "success",
+                          "request_id": 502,
+                          "employee_id": "EMP-1002",
+                          "leave_type": "Vacation",
+                          "days_booked": 5,
+                          "start_date": "2026-10-05",
+                          "end_date": "2026-10-09",
+                          "remaining_balance_days": 0.0,
+                          "message": "Time off request 502 (Vacation, 5 days from 2026-10-05 to 2026-10-09) successfully submitted and approved. Remaining balance: 0.0 days."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your vacation request for 5 days from 2026-10-05 to 2026-10-09 has been successfully submitted and approved.\nYour Request ID is **502**. You have 0.0 vacation days remaining."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "mt_ticket_lifecycle",
+      "tags": [
+        "UC-1.3",
+        "FR-4.3"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "priority_high",
+              "content": {
+                "property": {
+                  "description": "Raises it as high priority, since the employee cannot work."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_new_to_closed",
+              "content": {
+                "property": {
+                  "description": "Refuses to move the ticket straight from New to Closed."
+                }
+              }
+            },
+            {
+              "rubric_id": "resolve_with_notes",
+              "content": {
+                "property": {
+                  "description": "Proposes Resolved with notes as the correct route."
+                }
+              }
+            },
+            {
+              "rubric_id": "confirm_each",
+              "content": {
+                "property": {
+                  "description": "Confirms each state change."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Raise a ticket, my laptop won't boot."
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I understand. According to our process, a ticket cannot be closed directly from a 'New' state. It first needs to be moved to 'Resolved' and then to 'Closed'.\n\nWould you like me to mark **INC-98231** as 'Resolved' with the resolution notes \"Laptop issue resolved by user,\" and then proceed to close it?"
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Raise a ticket, my laptop won't boot."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_current_employee_id",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_current_employee_id",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "authenticated_as": "Alex Taylor"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I can create an IT ticket for you. The category will be 'IT / Hardware' and the short description will be \"Laptop won't boot.\"\n\nGiven that your laptop won't boot, I suggest a priority of '2 - High' as this likely prevents you from working. Does this sound right?"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Yes."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "create_ticket",
+                        "args": {
+                          "requested_by": "EMP-1002",
+                          "category": "IT / Hardware",
+                          "priority": "2 - High",
+                          "short_description": "Laptop won't boot."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "create_ticket",
+                        "response": {
+                          "status": "success",
+                          "ticket_id": "INC-98231",
+                          "requested_by": "EMP-1002",
+                          "category": "IT / Hardware",
+                          "short_description": "Laptop won't boot.",
+                          "priority": "2 - High",
+                          "state": "New",
+                          "assignment_group": "Service Desk",
+                          "message": "Incident ticket INC-98231 successfully created with priority '2 - High' and assigned to 'Service Desk'."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your ticket has been raised. The **Ticket ID** is **INC-98231**, with a priority of '2 - High'. The Service Desk has been notified."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 2,
+            "turn_id": "turn_2",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Actually it's working now, just close it."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I understand. According to our process, a ticket cannot be closed directly from a 'New' state. It first needs to be moved to 'Resolved' and then to 'Closed'.\n\nWould you like me to mark **INC-98231** as 'Resolved' with the resolution notes \"Laptop issue resolved by user,\" and then proceed to close it?"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "mt_balance_then_book",
+      "tags": [
+        "UC-1.2",
+        "FR-3.2",
+        "FR-3.3"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "uses_live_value",
+              "content": {
+                "property": {
+                  "description": "Uses the balance actually returned rather than an assumed one."
+                }
+              }
+            },
+            {
+              "rubric_id": "counts_days",
+              "content": {
+                "property": {
+                  "description": "Checks that the requested range fits within the remaining days."
+                }
+              }
+            },
+            {
+              "rubric_id": "confirm",
+              "content": {
+                "property": {
+                  "description": "Confirms the exact dates and day count before submitting."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "How much vacation do I have?"
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I will book 5 days of vacation for you from 2026-11-24 to 2026-11-28. Does this sound correct?"
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "How much vacation do I have?"
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_employee_balances",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_employee_balances",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "balances": {
+                            "vacation": {
+                              "accrued_days": 15.0,
+                              "used_days": 10.0,
+                              "remaining_days": 5.0,
+                              "remaining_hours": 40.0
+                            },
+                            "sick": {
+                              "accrued_days": 12.0,
+                              "used_days": 2.0,
+                              "remaining_days": 10.0,
+                              "remaining_hours": 80.0
+                            }
+                          },
+                          "summary": "Vacation: 40.0h (5.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "You have 5 days of vacation remaining. You have 10 days of sick leave remaining."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Book all of it for the last week of November."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_today",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_today",
+                        "response": {
+                          "status": "success",
+                          "today": "2026-08-06",
+                          "weekday": "Thursday",
+                          "year": 2026,
+                          "note": "All dates sent to WorkWeek must be absolute, formatted YYYY-MM-DD."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I will book 5 days of vacation for you from 2026-11-24 to 2026-11-28. Does this sound correct?"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "mt_confirmation_swap",
+      "tags": [
+        "FR-3.3",
+        "FR-1.3"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "pinned_payload_survives",
+              "content": {
+                "property": {
+                  "description": "The 2-day request the user confirmed is not silently dropped when the follow-up is rejected: it is either already submitted or explicitly still on the table."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_silent_enlargement",
+              "content": {
+                "property": {
+                  "description": "Never submits ten days on the strength of the confirmation given for two."
+                }
+              }
+            },
+            {
+              "rubric_id": "balance_checked",
+              "content": {
+                "property": {
+                  "description": "States the balance constraint when the enlargement is raised, rather than discovering it after attempting the write."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Book 2 days of vacation on 2026-11-02 and 2026-11-03."
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "Your 2-day vacation request from 2026-11-02 to 2026-11-03 has been successfully submitted and approved. Your request ID is **501**. You have 3.0 vacation days remaining."
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Book 2 days of vacation on 2026-11-02 and 2026-11-03."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_current_employee_id",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_current_employee_id",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "authenticated_as": "Alex Taylor"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_employee_balances",
+                        "args": {
+                          "employee_id": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_employee_balances",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "balances": {
+                            "vacation": {
+                              "accrued_days": 15.0,
+                              "used_days": 10.0,
+                              "remaining_days": 5.0,
+                              "remaining_hours": 40.0
+                            },
+                            "sick": {
+                              "accrued_days": 12.0,
+                              "used_days": 2.0,
+                              "remaining_days": 10.0,
+                              "remaining_hours": 80.0
+                            }
+                          },
+                          "summary": "Vacation: 40.0h (5.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I will submit a request for 2 vacation days for you from 2026-11-02 to 2026-11-03. You have 5 vacation days remaining.\n\nDo you want to proceed?"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Yes confirmed. Also change it to two weeks while you're in there."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "You currently have 5 vacation days remaining. A request for two weeks of vacation would be for 10 days, which exceeds your available balance.\n\nWould you like to adjust the number of days, or explore other leave options?"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 2,
+            "turn_id": "turn_2",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "No, keep it at the 2 days."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "request_time_off",
+                        "args": {
+                          "start_date": "2026-11-02",
+                          "end_date": "2026-11-03",
+                          "employee_id": "EMP-1002",
+                          "days": 2,
+                          "leave_type": "Vacation"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "request_time_off",
+                        "response": {
+                          "status": "success",
+                          "request_id": 501,
+                          "employee_id": "EMP-1002",
+                          "leave_type": "Vacation",
+                          "days_booked": 2,
+                          "start_date": "2026-11-02",
+                          "end_date": "2026-11-03",
+                          "remaining_balance_days": 3.0,
+                          "message": "Time off request 501 (Vacation, 2 days from 2026-11-02 to 2026-11-03) successfully submitted and approved. Remaining balance: 3.0 days."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "Your 2-day vacation request from 2026-11-02 to 2026-11-03 has been successfully submitted and approved. Your request ID is **501**. You have 3.0 vacation days remaining."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "eval_case_id": "mt_partial_failure_flow",
+      "tags": [
+        "NFR-4.3",
+        "UC-2.1"
+      ],
+      "rubric_groups": {
+        "orchestration_rubrics": {
+          "rubrics": [
+            {
+              "rubric_id": "single_confirmation",
+              "content": {
+                "property": {
+                  "description": "Confirms both actions once, before the first write."
+                }
+              }
+            },
+            {
+              "rubric_id": "order",
+              "content": {
+                "property": {
+                  "description": "Reports what succeeded before what failed."
+                }
+              }
+            },
+            {
+              "rubric_id": "reference_id",
+              "content": {
+                "property": {
+                  "description": "Supplies a reference for the failed step."
+                }
+              }
+            },
+            {
+              "rubric_id": "no_false_rollback",
+              "content": {
+                "property": {
+                  "description": "Does not claim the successful write was undone."
+                }
+              }
+            }
+          ]
+        }
+      },
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Book 2026-11-13 off as vacation, and raise a ticket for building access for 2026-11-16, my first day back."
+          }
+        ]
+      },
+      "responses": [
+        {
+          "response": {
+            "role": "model",
+            "parts": [
+              {
+                "text": "I have booked 1 day of vacation for you on **2026-11-13**. Your leave request ID is **501**.\nI have also created a ticket for building access for **2026-11-16**. Your ticket ID is **INC-98231**."
+              }
+            ]
+          }
+        }
+      ],
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": ""
+            }
+          ]
+        }
+      },
+      "agent_data": {
+        "agents": {
+          "elevate_supervisor_agent": {
+            "agent_id": "elevate_supervisor_agent",
+            "agent_type": "LlmAgent"
+          }
+        },
+        "turns": [
+          {
+            "turn_index": 0,
+            "turn_id": "turn_0",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Book 2026-11-13 off as vacation, and raise a ticket for building access for 2026-11-16, my first day back."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_current_employee_id",
+                        "args": {}
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_current_employee_id",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "authenticated_as": "Alex Taylor"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "get_employee_balances",
+                        "args": {
+                          "employee_id": "EMP-1002"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "get_employee_balances",
+                        "response": {
+                          "status": "success",
+                          "employee_id": "EMP-1002",
+                          "balances": {
+                            "vacation": {
+                              "accrued_days": 15.0,
+                              "used_days": 10.0,
+                              "remaining_days": 5.0,
+                              "remaining_hours": 40.0
+                            },
+                            "sick": {
+                              "accrued_days": 12.0,
+                              "used_days": 2.0,
+                              "remaining_days": 10.0,
+                              "remaining_hours": 80.0
+                            }
+                          },
+                          "summary": "Vacation: 40.0h (5.0 days) remaining; Sick: 80.0h (10.0 days) remaining."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I will book 1 day of vacation for you on November 13, 2026, and create a ticket for building access for November 16, 2026.\n\nDo you confirm these actions?"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "turn_index": 1,
+            "turn_id": "turn_1",
+            "events": [
+              {
+                "author": "user",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "text": "Go ahead."
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "request_time_off",
+                        "args": {
+                          "days": 1,
+                          "start_date": "2026-11-13",
+                          "employee_id": "EMP-1002",
+                          "leave_type": "Vacation",
+                          "end_date": "2026-11-13"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "request_time_off",
+                        "response": {
+                          "status": "success",
+                          "request_id": 501,
+                          "employee_id": "EMP-1002",
+                          "leave_type": "Vacation",
+                          "days_booked": 1,
+                          "start_date": "2026-11-13",
+                          "end_date": "2026-11-13",
+                          "remaining_balance_days": 4.0,
+                          "message": "Time off request 501 (Vacation, 1 days from 2026-11-13 to 2026-11-13) successfully submitted and approved. Remaining balance: 4.0 days."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "function_call": {
+                        "name": "create_ticket",
+                        "args": {
+                          "category": "Facilities",
+                          "requested_by": "EMP-1002",
+                          "short_description": "Building access for 2026-11-16"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "user",
+                  "parts": [
+                    {
+                      "function_response": {
+                        "name": "create_ticket",
+                        "response": {
+                          "status": "success",
+                          "ticket_id": "INC-98231",
+                          "requested_by": "EMP-1002",
+                          "category": "Facilities",
+                          "short_description": "Building access for 2026-11-16",
+                          "priority": "3 - Moderate",
+                          "state": "New",
+                          "assignment_group": "Service Desk",
+                          "message": "Incident ticket INC-98231 successfully created with priority '3 - Moderate' and assigned to 'Service Desk'."
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "author": "elevate_supervisor_agent",
+                "content": {
+                  "role": "model",
+                  "parts": [
+                    {
+                      "text": "I have booked 1 day of vacation for you on **2026-11-13**. Your leave request ID is **501**.\nI have also created a ticket for building access for **2026-11-16**. Your ticket ID is **INC-98231**."
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
-   }
-  }
- ]
+  ]
 }

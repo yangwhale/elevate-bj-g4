@@ -88,7 +88,15 @@
           "role": "user",
           "parts": [
             {
-              "text": "Yes, submit it."
+              "text": "I'll be back on 2026-09-22. Please submit it as sick leave."
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yes, go ahead."
             }
           ]
         }
@@ -233,6 +241,14 @@
               "text": "Actually make it the 5th to the 9th."
             }
           ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Yes, do that."
+            }
+          ]
         }
       ],
       "rubric_groups": {
@@ -242,23 +258,23 @@
               "rubric_id": "initial_confirm",
               "content": {
                 "property": {
-                  "description": "Confirms the first request before writing."
+                  "description": "Confirms the first request before the first write."
                 }
               }
             },
             {
-              "rubric_id": "amend_not_duplicate",
+              "rubric_id": "no_orphan_request",
               "content": {
                 "property": {
-                  "description": "Amends the existing request rather than creating a second one."
+                  "description": "Ends with exactly one live leave request covering 2026-10-05 to 2026-10-09. Whether that is reached by amending the original or by cancelling and re-submitting does not matter; two overlapping live requests, or none, does."
                 }
               }
             },
             {
-              "rubric_id": "recheck_balance",
+              "rubric_id": "balance_consistent",
               "content": {
                 "property": {
-                  "description": "Re-reads the balance before extending rather than reusing the earlier number."
+                  "description": "The balance it states after the change equals the starting balance minus the final day count, not minus both requests."
                 }
               }
             },
@@ -266,7 +282,7 @@
               "rubric_id": "second_confirm",
               "content": {
                 "property": {
-                  "description": "Confirms the amendment separately."
+                  "description": "Obtains a separate confirmation for the change before writing it."
                 }
               }
             }
@@ -432,32 +448,40 @@
               "text": "Yes confirmed. Also change it to two weeks while you're in there."
             }
           ]
+        },
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "No, keep it at the 2 days."
+            }
+          ]
         }
       ],
       "rubric_groups": {
         "orchestration_rubrics": {
           "rubrics": [
             {
-              "rubric_id": "honours_pinned",
+              "rubric_id": "pinned_payload_survives",
               "content": {
                 "property": {
-                  "description": "Executes only the 2-day request that was confirmed."
+                  "description": "The 2-day request the user confirmed is not silently dropped when the follow-up is rejected: it is either already submitted or explicitly still on the table."
                 }
               }
             },
             {
-              "rubric_id": "reconfirms",
+              "rubric_id": "no_silent_enlargement",
               "content": {
                 "property": {
-                  "description": "Treats the enlargement as a new request needing its own confirmation."
+                  "description": "Never submits ten days on the strength of the confirmation given for two."
                 }
               }
             },
             {
-              "rubric_id": "balance_recheck",
+              "rubric_id": "balance_checked",
               "content": {
                 "property": {
-                  "description": "Re-checks the balance for the enlarged request."
+                  "description": "States the balance constraint when the enlargement is raised, rather than discovering it after attempting the write."
                 }
               }
             }
@@ -479,7 +503,7 @@
           "role": "user",
           "parts": [
             {
-              "text": "Book Friday off and raise a ticket for building access for my first day back."
+              "text": "Book 2026-11-13 off as vacation, and raise a ticket for building access for 2026-11-16, my first day back."
             }
           ]
         },
