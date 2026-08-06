@@ -8,7 +8,7 @@
 | :---- | :---- |
 | Author(s) | Solution Architecture Team |
 | Date | 2026-08-06 |
-| Status | Under Review |
+| Status | **Under Review — ready for architecture review board** |
 | Target Audience | Enterprise Architecture, HR Engineering, IT Operations, Security & Compliance, **and the implementation agent/team building MVP 1** |
 
 ## **Revision History**
@@ -24,6 +24,7 @@
 | **1.5** | 2026-08-06 | C. Yang (design review) | **Coverage pass.** Closed the three requirements that had no design section at all: `FR-1.1` → §4.7 capability manifest with deny-by-default enforcement; `NFR-1.3` → §4.8 compliance posture; `NFR-2.2` → §5.6, which demonstrates arithmetically that 99.9% is unreachable in the single-region MVP and proposes options. Added §3.5 write-action confirmation protocol, §3.6 conversational frontend (in BRD scope but previously undesigned), and §5.7 turn latency budget decomposing the 300 ms safety cap across three calls. Rewrote §8 into falsifiable assumptions / constraints / owned risks, and §10 into closed vs open decisions with owners and deadlines. |
 | **1.6** | 2026-08-06 | C. Yang (design review) | **Consistency pass.** Sequence diagrams rewritten so they obey the rules the document states elsewhere: `UC-2.2` now checks the balance before submitting leave (it previously violated `FR-3.3`), `UC-2.1` uses a new `get_employee_profile` tool instead of reading `role` from `get_personal_info`, `UC-2.3` quotes the allowance from the retrieved citation instead of asserting a figure, and every mutation passes through §3.5 confirmation. Removed the hard-coded PAT and demo hostname from §4.1 in favour of Secret Manager plus a CI secret gate, and separated automation identity from user identity. Added §4.2.1 to resolve the apparent `FR-3.4` / §3.4 caching conflict, masked `agent_response` in the ERD, and re-derived the rate limits, which were previously above any achievable human rate. |
 | **1.7** | 2026-08-06 | C. Yang (design review) | **Executability pass.** Rewrote §9 from a 5-row table into a real evaluation framework: 5 curated datasets with owners and refresh triggers, 21 numbered metrics each bound to a suite and a BRD source, UAT stages with exit criteria, and a continuous-evaluation cadence. Added Appendix B, the implementation specification: repository layout, configuration contract, the verbatim agent system instruction, the enforcement-point matrix separating what the prompt requests from what a callback guarantees, a 14-task work breakdown with per-task acceptance criteria, and a Definition of Done. The document can now be handed to an implementer with no design decisions left open. |
+| **1.8** | 2026-08-06 | C. Yang (design review) | **Adversarial final pass.** Machine-verified every cross-reference, requirement ID, decision ID and figure in the document: 0 invented requirement IDs, 0 unreferenced BRD requirements, 0 dangling section references, all D/M/A/R/C/T identifiers defined. Fixes found by that pass: `D-7` was referenced after being dropped from §10 during the v1.5 rewrite (restored as a closed decision); §5.1 subsections were referenced as 5.1.1–5.1.3 but numbered 1–3; §7.4 was referenced but did not exist. Redrew the §1.3 architecture diagram, which still showed Model Armor emitting citations and omitted IAP, the callbacks and the audit path. Rewrote §1.1 and §1.2 where they still credited Model Armor with grounding. Replaced the 4-row §5.2 error matrix with 14 numbered scenarios each mapped to a detection point, a user message and a test. Rebuilt the §7.1 plan so its tasks map 1:1 to Appendix B.5, with the MCP probe marked critical-path. Added §7.4 environments and configuration management. |
 
 ---
 
@@ -36,7 +37,7 @@ The **HR Agentic Solution (MVP 1)** introduces a secure, AI-driven virtual assis
 * **Deflect Tier 1 HR/IT Inquiries:** Achieve a $\ge 40\%$ reduction in routine ticket volume within 6 months.
 * **Enable Conversational Transactions:** Execute core self-service actions (leave submission, contact updates, ticket tracking) conversationally.
 * **Demonstrate Cross-System Orchestration:** Multi-step intent resolution chaining Policy RAG, WorkWeek HCM, and ServiceImmediately ITSM.
-* **Enforce Zero-Trust AI Security:** Guarantee 100% auditability, bounded tool execution via MCP, prompt injection interception, and zero policy/data leakage using Google Cloud Model Armor.
+* **Enforce Zero-Trust AI Security:** 100% auditability, deny-by-default tool boundaries (§4.7), prompt-injection interception and SPII redaction via Google Cloud Model Armor, and — as a **separate** control — anti-hallucination grounding via Vertex AI `check_grounding` (§4.3.1). Confirmation is required before any change to enterprise state (§3.5).
 
 ## **1.2. Scope Boundaries**
 
@@ -47,7 +48,7 @@ The **HR Agentic Solution (MVP 1)** introduces a secure, AI-driven virtual assis
 | **HCM Integration** | **WorkWeek via FastMCP**: Profile metadata, PTO balance check, Leave booking/cancellation, Address/Phone update | Payroll processing, performance reviews, compensation data |
 | **ITSM Integration** | **ServiceImmediately via FastMCP**: Ticket status/details query, Incident ticket creation, Comment timeline, Status lifecycle updates | Change management, asset management, IT provisioning |
 | **Orchestration** | Multi-system workflows (UC-2.1 Equipment, UC-2.2 Medical Leave, UC-2.3 Relocation) | Third-party ERPs, CRM integrations |
-| **Security & Auth** | **Google Cloud Model Armor** for prompt injection & PII masking; Service PAT in `X-MCP-Token` header | Full Enterprise SSO / Okta SAML (future state) |
+| **Security & Auth** | **Model Armor** (injection, RAI, SPII); **`check_grounding`** for factual grounding; service PAT from Secret Manager in `X-MCP-Token`; `employee_id` derived server-side from IAP | Full Enterprise SSO / Okta SAML, multi-role RBAC (future state) |
 | **Session Memory** | **Agent Platform Agent Runtime Session Service** for multi-turn state management | External custom session databases |
 
 ## **1.3. Target Architecture Overview**
@@ -56,40 +57,48 @@ The solution leverages Google ADK (Agent Development Kit) running on Google Clou
 
 ```mermaid
 graph TD
-    User(["Employee / User UI"]) -->|Web Chat Request| UI["Conversational Chat Frontend"]
-    UI -->|HTTP Request| ModelArmor["Google Cloud Model Armor"]
-    
-    subgraph Governance["Governance & Safety Layer"]
-        ModelArmor -->|1. Prompt Sanitization| PromptGuard["Prompt Injection & Jailbreak Defense"]
-        ModelArmor -->|2. Data Masking| PIIRedactor["PII & SPII Redaction"]
+    User(["Employee"]) -->|Browser| IAP["Cloud IAP<br/>injects authenticated email"]
+    IAP --> UI["Chat UI (Cloud Run)<br/>resolves email -> employee_id<br/>binds it to the session"]
+
+    UI -->|prompt| ArmorIn["Model Armor — inbound<br/>injection · jailbreak · SPII masking"]
+    ArmorIn -->|blocked| Blocked["Refuse + audit event"]
+    ArmorIn -->|sanitized| Runtime["Agent Platform Agent Runtime"]
+
+    subgraph Orchestration["Agentic Orchestration Layer"]
+        Runtime --> Session[("Agent Runtime Session Service")]
+        Runtime --> Supervisor["Supervisor Agent (ADK)"]
+        Supervisor --- CB["Callbacks: identity · tool allowlist ·<br/>confirmation gate"]
+        Supervisor -->|policy| PolicyTool["Vertex AI Search tool"]
+        Supervisor -->|HCM| WorkWeekMCP["WorkWeek McpToolset"]
+        Supervisor -->|ITSM| ServiceMCP["ServiceImmediately McpToolset"]
     end
 
-    PromptGuard -->|Sanitized User Prompt| Runtime["Agent Platform Agent Runtime"]
-
-    subgraph Agentic Orchestration Layer
-        Runtime -->|Session Management| SessionStore[("Agent Runtime Session Service")]
-        Runtime -->|Intent Classification| Supervisor["Supervisor Agent"]
-        Supervisor -->|Policy Query| PolicyAgent["Vertex AI Search RAG Tool"]
-        Supervisor -->|WorkWeek MCP| WorkWeekMCP["WorkWeek FastMCP Server"]
-        Supervisor -->|ServiceImmediately MCP| ServiceMCP["ServiceImmediately FastMCP Server"]
+    subgraph Backend["Enterprise Backends"]
+        PolicyTool --> PolicyKB[("Vertex AI Search<br/>HR policy datastore")]
+        WorkWeekMCP -->|"X-MCP-Token · /work-week/mcp/"| WWBackend[("WorkWeek HCM")]
+        ServiceMCP -->|"X-MCP-Token · /service-immediately/mcp/"| SIMBackend[("ServiceImmediately ITSM")]
     end
 
-    subgraph Backend["Enterprise Backend Services (enterprise_services_openapi.json)"]
-        PolicyAgent -->|Semantic Search| PolicyKB[("Vertex AI Agent Builder Policy Index")]
-        WorkWeekMCP -->|Streamable HTTP /work-week/mcp/| WWBackend[("WorkWeek HCM System")]
-        ServiceMCP -->|Streamable HTTP /service-immediately/mcp/| SIMBackend[("ServiceImmediately ITSM System")]
-    end
+    PolicyTool --> Ground{"check_grounding<br/>support_score >= 0.7"}
+    Ground -->|unsupported| Refuse["'Not found in approved policies'"]
+    Ground -->|supported| Cite["Citation resolver<br/>HEAD-check every URI"]
 
-    Runtime -->|Raw Model Response| OutputArmor["Model Armor Output Guard"]
-    OutputArmor -->|Toxicity Check & Citation Links| UI
+    Cite --> ArmorOut["Model Armor — outbound<br/>RAI · unmasked-data filter"]
+    Supervisor --> ArmorOut
+    ArmorOut --> UI
+
+    Runtime -.->|"every allowed AND refused call"| Audit[("Cloud Logging -> BigQuery<br/>automation_source · agent_version")]
 ```
+
+**Reading the diagram.** Three things are load-bearing and are easy to get wrong: (1) `employee_id` originates at IAP and is bound server-side — it never travels up from the browser or out of the model (§4.1); (2) Model Armor and `check_grounding` are **different controls on different failure modes** and neither substitutes for the other (§4.3); (3) refused calls are audited as thoroughly as permitted ones, which is what `NFR-1.2` actually demands.
 
 ## **1.4. Alternatives Considered**
 
 | Architectural Pattern | Evaluated Alternative | Selected Choice & Rationale |
 | :--- | :--- | :--- |
 | **Backend Integration** | Direct REST Endpoint Calling | **Streamable HTTP MCP Servers (`FastMCP`)**: Provides standardized tool discovery, strict type schema enforcement, stateless transport, and built-in ADK compatibility via `McpToolset`. |
-| **Safety Interceptor** | Custom Regex / In-Prompt Rules | **Google Cloud Model Armor**: Enterprise-grade defense against prompt injection, jailbreaking, PII leakage, and toxic outputs within the $< 300\text{ms}$ SLA budget (`NFR-2.1`). |
+| **Safety Interceptor** | Custom Regex / In-Prompt Rules | **Google Cloud Model Armor**: managed defence against prompt injection, jailbreak, toxic output and SPII leakage, budgeted at 240 ms of the 300 ms safety cap (§5.7.1, `NFR-2.1`). Explicitly **not** used for factual grounding — see the row below. |
+| **Anti-Hallucination** | Prompt-only instruction ("answer only from context") | **Vertex AI `check_grounding`** + citation resolver: a measurable per-claim support score with a hard emit threshold. A prompt instruction cannot be tested; a score can, which is what makes `NFR-3.1`'s 0% target verifiable (§4.3.1). |
 | **Knowledge Base (RAG)** | Custom Vector DB (FAISS/Chroma) | **Vertex AI Search / Agent Builder**: Fully managed document ingestion from Cloud Storage, semantic chunking, and automatic deep-link citation generation (`FR-5.1` - `FR-5.4`). |
 | **Session Memory** | Redis / Firestore with TTL | **Agent Platform Agent Runtime Session Service**: Native session persistence and dialog turn management within Google Cloud's Agent Platform ecosystem (`FR-2.2`). |
 
@@ -578,6 +587,8 @@ The role model below depends on Enterprise SSO and directory sync, both explicit
 
 ## **4.5. Pre-LLM PII/SPII Masking Pipeline**
 
+This is the **same inbound Model Armor call** budgeted at 120 ms in §5.7.1 — injection screening and SPII masking are one round trip against one template, not two. Issuing them separately doubles the safety spend and breaks the 300 ms cap.
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -673,7 +684,7 @@ The agent is constructed **only** from toolsets present in the manifest. A `befo
 
 ## **5.1. FastMCP Tool Specifications**
 
-### **1. WorkWeek FastMCP Server (`/work-week/mcp/`)**
+### **5.1.1. WorkWeek FastMCP Server (`/work-week/mcp/`)**
 
 | Tool Name | Parameters | Description & Validation Rules |
 | :--- | :--- | :--- |
@@ -685,7 +696,7 @@ The agent is constructed **only** from toolsets present in the manifest. A `befo
 | `get_personal_info` | `employee_id: str` | Retrieves personal address and phone details (`FR-3.2`). |
 | `cancel_leave_request` | `employee_id: str`, `request_id: int` | Cancels a pending/approved request and refunds remaining leave days. |
 
-### **2. ServiceImmediately FastMCP Server (`/service-immediately/mcp/`)**
+### **5.1.2. ServiceImmediately FastMCP Server (`/service-immediately/mcp/`)**
 
 | Tool Name | Parameters | Description & Validation Rules |
 | :--- | :--- | :--- |
@@ -695,7 +706,7 @@ The agent is constructed **only** from toolsets present in the manifest. A `befo
 | `add_ticket_comment` | `ticket_id: str`, `author: str`, `comment_text: str` | Appends comment to ticket activity log timeline (`FR-4.2`). Parameter name `comment_text` matches the `CommentCreateRequest` schema in `enterprise_services_openapi.json`. |
 | `update_ticket_status` | `ticket_id: str`, `status: str`, `resolution_notes: str` (default `""`), `updated_by: str` (default `"System"`) | Enforces the state machine defined in §5.1.3. **`New -> Closed` is rejected** per `FR-4.3`. Closed tickets are immutable. |
 
-### **3. Ticket Lifecycle State Machine (`FR-4.3`)**
+### **5.1.3. Ticket Lifecycle State Machine (`FR-4.3`)**
 
 `FR-4.3` requires rejecting "direct transition from New to Closed". The authoritative transition table is:
 
@@ -712,12 +723,24 @@ Rejected transitions return `409 Conflict` with `error_code = INVALID_STATE_TRAN
 
 ## **5.2. Error Handling & Fallback Matrix**
 
-| Failure Scenario | Root Cause | Fallback Behavior & User Message |
-| :--- | :--- | :--- |
-| **Transient Network Timeout / 5xx** | Backend service glitch | Automatic exponential backoff retry up to 3 attempts (`NFR-4.2`). If persistent: *"WorkWeek is temporarily unavailable. Please try again shortly."* (`NFR-4.1`) |
-| **Insufficient PTO Balance** | Business rule violation | Agent intercepts error: *"Request declined: You requested 5 days, but only have 2 days remaining."* (`FR-3.3`) |
-| **Invalid Ticket State Transition** | State machine violation | Agent catches state rule: *"Ticket INC-123 is Closed and cannot be updated."* (`FR-4.3`) |
-| **Partial Cross-System Failure** | Step 1 succeeds, Step 2 fails | Log failure with tracking reference ID (`NFR-4.3`). User notified: *"Leave request submitted in WorkWeek, but ticket creation in ServiceImmediately failed. Reference ID: LOG-8812. Please contact IT support."* |
+| # | Failure scenario | Detection | User-visible behaviour | Requirement |
+| :-- | :--- | :--- | :--- | :--- |
+| **E-1** | Transient timeout / `5xx` | HTTP status | 3 jittered retries (§5.3); then *"WorkWeek is temporarily unavailable — I can still answer policy questions and handle IT tickets."* | `NFR-4.1`, `NFR-4.2` |
+| **E-2** | Insufficient PTO balance | Pre-flight balance read (§3.2 `UC-1.2`) | *"You asked for 5.0 days but have 2.0 remaining, so I haven't submitted anything."* Never offers to submit anyway. | `FR-3.3` |
+| **E-3** | Invalid date range | Agent-side validation | *"The start date is after the end date — which dates did you mean?"* | `FR-3.3` |
+| **E-4** | Invalid phone / address format | `422` from `ProfileUpdateRequest` | *"That phone number doesn't look valid — could you give it with the country code?"* | `FR-3.3` |
+| **E-5** | Illegal state transition | `409 INVALID_STATE_TRANSITION` (§5.1.3) | *"A New ticket can't go straight to Closed. I can set it to Resolved first — do that?"* | `FR-4.3` |
+| **E-6** | Duplicate ticket inside the 5-minute window | Backend dedup | *"You raised a near-identical ticket 2 minutes ago (INC-98231). Add a comment to it instead?"* | `FR-4.3` |
+| **E-7** | Grounding below threshold | `check_grounding` (§4.3.1) | *"I could not find this in the approved HR policies."* Offers to raise a ticket. Never guesses. | `FR-5.2`, `NFR-3.1` |
+| **E-8** | Citation URI unresolvable | Citation resolver HEAD check | Same refusal as E-7; emits `citation.dead_link` for the HR content owner | `FR-5.3` |
+| **E-9** | Model Armor unavailable | Call failure | **Fail closed** — *"The assistant is unavailable."* Safety is never bypassed for uptime (§5.6.3). | `FR-1.3`, `NFR-1.1` |
+| **E-10** | Identity mismatch (model emitted a foreign `employee_id`) | `callbacks/identity.py` | Call refused before the backend is touched; *"I can only access your own records."*; `governance.identity_mismatch` logged | `FR-1.5` |
+| **E-11** | Unlisted tool name | `callbacks/governance.py` | Refused silently to the model, `governance.tool_denied` logged; user sees a normal capability refusal | `FR-1.1` |
+| **E-12** | Confirmation missing or payload changed after confirmation | `callbacks/confirmation.py` | Re-prompts with the current payload instead of executing (§3.5) | `FR-1.3` |
+| **E-13** | Partial cross-system failure | Step 2+ fails after step 1 committed | *"Your leave request 602 **is** submitted. The email-routing ticket failed — reference LOG-8812."* Order matters: state what succeeded first. DLQ row written (§5.4). | `NFR-4.3` |
+| **E-14** | Schema drift in an MCP response | Pydantic interceptor (§5.5) | Unparseable fields stripped, safe baseline rendered, `schema_drift_count` incremented, PagerDuty raised | `NFR-4.1` |
+
+**Message rules.** No stack trace, HTTP status, internal hostname, or backend error code ever reaches the user; the only identifier permitted is a reference ID the system generated for them (`NFR-4.1`). Every row above has a matching case in `eval/transactions.jsonl` or the fault-injection suite (`M-8`, `M-16`, `M-18`).
 
 ## **5.3. FastMCP Rate Limiting, Throttling & Retry Backoff Configurations**
 
@@ -879,20 +902,30 @@ $$C_{\text{Compute}} = (\text{vCPU-hours} \times \$0.024) + (\text{GB-hours} \ti
 
 ```mermaid
 gantt
-    title MVP 1 Phased Delivery Plan
+    title MVP 1 Delivery Plan (tasks map 1:1 to Appendix B.5)
     dateFormat  YYYY-MM-DD
     section Phase 1: Foundation
-    Environment Setup & Terraform        :2026-08-06, 5d
-    MCP Toolset Integration & Testing    :2026-08-09, 7d
-    section Phase 2: Agent Development
-    Supervisor Agent & Vertex RAG        :2026-08-16, 8d
-    Google Cloud Model Armor Integration  :2026-08-20, 6d
-    section Phase 3: Validation
-    Cross-System Flow Integration Tests   :2026-08-24, 6d
-    UAT Benchmark & Security Scan         :2026-08-28, 5d
-    section Phase 4: Launch
-    Production Deployment & Rollout       :2026-09-02, 3d
+    T-1 MCP contract probe (closes D-15)   :crit, 2026-08-06, 2d
+    T-2 Terraform base + secrets           :2026-08-06, 4d
+    T-3 Policy corpus ingestion            :2026-08-10, 2d
+    T-4 Toolsets from manifest             :2026-08-10, 3d
+    section Phase 2: Agent
+    T-5 Identity + governance callbacks    :2026-08-13, 3d
+    T-6 Policy tool + check_grounding      :2026-08-13, 4d
+    T-7 Confirmation gate                  :2026-08-17, 2d
+    T-8 Assemble agent (UC-1.x green)      :2026-08-19, 3d
+    T-9 Model Armor + tracing              :2026-08-22, 3d
+    section Phase 3: Orchestration & Validation
+    T-10 Cross-system flows (UC-2.x)       :2026-08-25, 4d
+    T-11 UI service with IAP + SSE         :2026-08-25, 4d
+    T-12 Resilience: retry, breaker, DLQ   :2026-08-29, 3d
+    T-13 CI gates                          :2026-08-29, 2d
+    section Phase 4: Acceptance
+    T-14 Full eval + UAT-1..UAT-4          :2026-09-01, 5d
+    Go/No-Go and production rollout        :milestone, 2026-09-08, 0d
 ```
+
+**Sequencing rationale.** `T-1` is marked critical and scheduled first because §5.1 is an *assumption* (`A-2`) until the live `tools/list` is probed; every task from `T-4` onward inherits its correctness. `T-10` and `T-11` are parallel because the UI depends on the agent's HTTP surface, not on its orchestration logic. Nothing in Phase 4 can start until `T-13` makes the gates enforceable — otherwise UAT measures a moving target.
 
 ## **7.2. CI/CD Environment Promotion Pipeline**
 
@@ -927,6 +960,22 @@ terraform/
     ├── staging/               # Staging environment config with canary rules
     └── prod/                  # Production multi-region deployment terraform state
 ```
+
+## **7.4. Environments & Configuration Management**
+
+| | `dev` | `staging` | `prod` |
+| :--- | :--- | :--- | :--- |
+| GCP project | `hr-agentic-dev` | `hr-agentic-stg` | `hr-agentic-prod` |
+| MCP targets | Mock SaaS demo host | Mock SaaS demo host | Real WorkWeek / ServiceImmediately |
+| Policy corpus | 10-document sample incl. the planted indirect-injection fixture (`R-4`) | Full corpus, redacted | Full corpus |
+| Employee data | Synthetic only | Synthetic only | Real — **gated on `D-8` and `D-10`** |
+| Model Armor | Enabled, `permissive` logging for tuning | Enabled, enforcing | Enabled, enforcing |
+| Terraform state | `gs://<project>-tfstate/dev` | `…/staging` | `…/prod`, bucket versioning + object hold |
+| Who may apply | Any engineer | CI only | CI only, after the §7.2 staging gate |
+
+* **Configuration lives in three places and nowhere else**: Terraform variables (infrastructure), Cloud Run environment variables (the §B.2 table), and Secret Manager (credentials). No `.env` file is committed; a CI check fails the build if one appears.
+* **Every environment variable in §B.2 is emitted as a Terraform output**, so a drift between what Terraform built and what the service reads is impossible by construction.
+* **Promotion is by immutable container digest**, never by rebuilding from a tag. The digest that passed staging is the digest that reaches production.
 
 ---
 
@@ -1057,6 +1106,7 @@ Assumptions live in §8.1. This section tracks **decisions**: those already clos
 | **D-12** | Anti-hallucination control | **Vertex AI `check_grounding`** + citation resolver at `support_score ≥ 0.7`, separate from Model Armor (§4.3.1, `FR-5.2`, `NFR-3.1`). | Approved (v1.4) |
 | **D-13** | Write-action safety | Every mutating tool requires an explicit confirmation turn with payload pinning (§3.5). | Approved (v1.5) |
 | **D-14** | MVP authorization model | Single role, self-scoped, enforced server-side; multi-role RBAC deferred to production (§4.4.1/§4.4.2, `C-1`). | Approved (v1.4) |
+| **D-7** | `FR-1.1` capability & lifecycle governance in MVP 1 | `capability_manifest.yaml` as the single source of tool truth, a deny-by-default `before_tool_callback`, and version/owner labels asserted by a CI gate (§4.7). Agent Registry remains the future-state addition, not the MVP mechanism. | Approved (v1.5) |
 
 ## **10.2. Open Decisions — blocking, with owners**
 
