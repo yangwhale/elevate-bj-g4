@@ -25,6 +25,7 @@
 | **1.6** | 2026-08-06 | C. Yang (design review) | **Consistency pass.** Sequence diagrams rewritten so they obey the rules the document states elsewhere: `UC-2.2` now checks the balance before submitting leave (it previously violated `FR-3.3`), `UC-2.1` uses a new `get_employee_profile` tool instead of reading `role` from `get_personal_info`, `UC-2.3` quotes the allowance from the retrieved citation instead of asserting a figure, and every mutation passes through §3.5 confirmation. Removed the hard-coded PAT and demo hostname from §4.1 in favour of Secret Manager plus a CI secret gate, and separated automation identity from user identity. Added §4.2.1 to resolve the apparent `FR-3.4` / §3.4 caching conflict, masked `agent_response` in the ERD, and re-derived the rate limits, which were previously above any achievable human rate. |
 | **1.7** | 2026-08-06 | C. Yang (design review) | **Executability pass.** Rewrote §9 from a 5-row table into a real evaluation framework: 5 curated datasets with owners and refresh triggers, 21 numbered metrics each bound to a suite and a BRD source, UAT stages with exit criteria, and a continuous-evaluation cadence. Added Appendix B, the implementation specification: repository layout, configuration contract, the verbatim agent system instruction, the enforcement-point matrix separating what the prompt requests from what a callback guarantees, a 14-task work breakdown with per-task acceptance criteria, and a Definition of Done. The document can now be handed to an implementer with no design decisions left open. |
 | **1.8** | 2026-08-06 | C. Yang (design review) | **Adversarial final pass.** Machine-verified every cross-reference, requirement ID, decision ID and figure in the document: 0 invented requirement IDs, 0 unreferenced BRD requirements, 0 dangling section references, all D/M/A/R/C/T identifiers defined. Fixes found by that pass: `D-7` was referenced after being dropped from §10 during the v1.5 rewrite (restored as a closed decision); §5.1 subsections were referenced as 5.1.1–5.1.3 but numbered 1–3; §7.4 was referenced but did not exist. Redrew the §1.3 architecture diagram, which still showed Model Armor emitting citations and omitted IAP, the callbacks and the audit path. Rewrote §1.1 and §1.2 where they still credited Model Armor with grounding. Replaced the 4-row §5.2 error matrix with 14 numbered scenarios each mapped to a detection point, a user message and a test. Rebuilt the §7.1 plan so its tasks map 1:1 to Appendix B.5, with the MCP probe marked critical-path. Added §7.4 environments and configuration management. |
+| **1.9** | 2026-08-06 | C. Yang (design review) | **Rendering fix.** GitHub reported "Unable to render rich display" on this file. Root cause: `;` is a statement separator in Mermaid, so three sequence-diagram messages containing a semicolon were truncated mid-message, breaking the enclosing `alt` block. Rewrote the three messages without semicolons. All 14 diagrams now parse cleanly against the Mermaid v11 parser, verified programmatically rather than by eye. Also confirmed all seven `$$` math blocks are single-line and contain no `\\`, which GitHub renders incorrectly. |
 
 ---
 
@@ -245,7 +246,7 @@ sequenceDiagram
         SI-->>Agent: {ticket_id: "INC-98231", state: "New"}
         Agent-->>Employee: "Hardware request INC-98231 created."
     else Not eligible
-        Agent-->>Employee: "The remote-work policy [citation] limits this to remote staff; your record shows on-site. No ticket raised."
+        Agent-->>Employee: "The remote-work policy [citation] limits this to remote staff.<br/>Your record shows on-site, so no ticket was raised."
     end
 ```
 
@@ -278,11 +279,11 @@ sequenceDiagram
     Agent->>SI: create_ticket(requested_by=employee_id, category="HR Access",<br/>short_description="Out-of-office email routing during medical leave", priority="3 - Moderate")
     alt Both succeed
         SI-->>Agent: {ticket_id: "INC-98240"}
-        Agent-->>Employee: "Leave 602 submitted; ticket INC-98240 opened. Procedure: [citation]"
+        Agent-->>Employee: "Leave 602 submitted and ticket INC-98240 opened.<br/>Procedure: [citation]"
     else Ticket step fails
         SI-->>Agent: 5xx after 3 retries
         Agent->>Agent: Emit reference ID + DLQ entry (§5.2, §5.4, NFR-4.3)
-        Agent-->>Employee: "Leave 602 IS submitted. The email-routing ticket failed —<br/>reference LOG-8812. Please contact IT; your leave is unaffected."
+        Agent-->>Employee: "Leave 602 IS submitted. The email-routing ticket failed —<br/>reference LOG-8812. Please contact IT. Your leave is unaffected."
     end
 ```
 
