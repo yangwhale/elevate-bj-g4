@@ -1,0 +1,10 @@
+# Project layout for the agents-cli toolchain. The agent package is `agent/`,
+# not the scaffold default `app/`, so eval and deploy commands need this file
+# to find it.
+project_name: elevate-hr-agent
+agent_directory: agent
+base_template: adk
+language: python
+region: us-central1
+deployment_target: agent_engine
+session_type: none

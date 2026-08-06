@@ -18,3 +18,10 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Evaluation artefacts are large; the summarised results live in
+# tests/eval/evaluation_report.md. Keep the results JSON, drop the HTML.
+artifacts/sessions/
+artifacts/results/**/*.html
+.venv/
+agent/.adk/

@@ -1,0 +1,13 @@
+# Multi-turn suite. The single-turn metrics score one reply; these score the
+# conversation — whether the goal was reached, whether the tool sequence was
+# sound, and whether the right tools were called with the right arguments.
+metrics_to_run:
+  - MULTI_TURN_TASK_SUCCESS
+  - MULTI_TURN_TOOL_USE_QUALITY
+  - MULTI_TURN_TRAJECTORY_QUALITY
+  - SAFETY
+
+judge_defaults:
+  judge_model: gemini-2.5-pro
+  judge_model_generation_config:
+    temperature: 0.0
