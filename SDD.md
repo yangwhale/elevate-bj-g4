@@ -27,6 +27,7 @@
 | **1.8** | 2026-08-06 | C. Yang (design review) | **Adversarial final pass.** Machine-verified every cross-reference, requirement ID, decision ID and figure in the document: 0 invented requirement IDs, 0 unreferenced BRD requirements, 0 dangling section references, all D/M/A/R/C/T identifiers defined. Fixes found by that pass: `D-7` was referenced after being dropped from §10 during the v1.5 rewrite (restored as a closed decision); §5.1 subsections were referenced as 5.1.1–5.1.3 but numbered 1–3; §7.4 was referenced but did not exist. Redrew the §1.3 architecture diagram, which still showed Model Armor emitting citations and omitted IAP, the callbacks and the audit path. Rewrote §1.1 and §1.2 where they still credited Model Armor with grounding. Replaced the 4-row §5.2 error matrix with 14 numbered scenarios each mapped to a detection point, a user message and a test. Rebuilt the §7.1 plan so its tasks map 1:1 to Appendix B.5, with the MCP probe marked critical-path. Added §7.4 environments and configuration management. |
 | **1.9** | 2026-08-06 | C. Yang (design review) | **Rendering fix.** GitHub reported "Unable to render rich display" on this file. Root cause: `;` is a statement separator in Mermaid, so three sequence-diagram messages containing a semicolon were truncated mid-message, breaking the enclosing `alt` block. Rewrote the three messages without semicolons. All 14 diagrams now parse cleanly against the Mermaid v11 parser, verified programmatically rather than by eye. Also confirmed all seven `$$` math blocks are single-line and contain no `\\`, which GitHub renders incorrectly. |
 | **1.10** | 2026-08-06 | C. Yang (design review) | **Rendering fix, round 2.** The §7.1 Gantt still failed on GitHub with `Cannot read properties of undefined (reading 'type')`. Cause: a task **name** containing a colon (`T-12 Resilience: retry, breaker, DLQ`). Gantt splits each line at the first `:`, so the remainder was parsed as task metadata and the comma-separated fragments produced an undefined field. Renamed with an em dash. Upgraded the verification harness from `mermaid.parse` to `mermaid.render` under jsdom — the previous round only proved the diagrams parse, and this failure was a render-stage failure that parsing could not catch. All 14 diagrams now render. |
+| **1.11** | 2026-08-06 | C. Yang (design review) | **Executability audit.** Audited the document by asking, for each build task in Appendix B, whether an implementer could complete it without asking a question. Thirteen could not. Added Appendix C to supply the missing values and interfaces: deployment method and invocation contract (Terraform cannot create an Agent Runtime instance, which the plan had implied), Vertex AI Search datastore settings, both Model Armor template configurations, ADK callback signatures and their fixed execution order, confirmation state layout, audit log schema with partitioning, service sizing, Terraform resource inventory per module, dashboard and alert policies, evaluation record format, rollback procedures for five failure classes, and a contingency for T-1 if the probed MCP surface disagrees with §5.1. |
 
 ---
 
@@ -1352,3 +1353,225 @@ Ordered so each task is verifiable before the next depends on it.
 4. `terraform apply` reproduces `dev` from an empty project with no manual steps.
 5. No secret, token, or demo hostname appears in the repository or in any non-dev configuration.
 6. The deployed Agent Runtime's `app_version` label equals `capability_manifest.yaml` `version`, and both appear on every audit row.
+
+---
+
+# **Appendix C — Executability Closure**
+
+Appendix B defines what to build. This appendix supplies the values and interfaces that Appendix B assumes exist. Together they remove the need for the implementer to make platform decisions.
+
+## **C.1. Deployment Method**
+
+Agent Runtime instances are not created by Terraform. Terraform provisions the surrounding infrastructure; the agent itself is packaged and deployed by the ADK toolchain. The split is:
+
+| Layer | Created by | Command |
+| :--- | :--- | :--- |
+| APIs, service accounts, Secret Manager, Artifact Registry, Vertex AI Search datastore, Model Armor templates, BigQuery dataset, Cloud Run UI service | Terraform | `terraform apply -var-file=env/<env>.tfvars` |
+| Agent container image | Cloud Build | `gcloud builds submit --tag <region>-docker.pkg.dev/$PROJECT_ID/agents/hr-assistant:$GIT_SHA` |
+| Agent Runtime instance | ADK deploy | `adk deploy agent_engine --project $PROJECT_ID --region $LOCATION --staging_bucket gs://$PROJECT_ID-agent-staging --display_name hr-agentic-assistant agent/` |
+| Runtime environment variables | ADK deploy | `--env_file .env.<env>` produced from Terraform outputs |
+
+Deployment writes `deployment_metadata.json` containing the Agent Runtime resource name. The CI job records that resource name, the container digest, and `APP_VERSION` in the release notes, and applies them as labels (§4.7.3).
+
+**Invocation contract.** The deployed instance is called through the Vertex AI API. Session creation and query are separate calls:
+
+```
+POST https://{LOCATION}-aiplatform.googleapis.com/v1/{RESOURCE_NAME}:query
+     {"classMethod": "create_session", "input": {"user_id": "<employee_id>"}}
+
+POST https://{LOCATION}-aiplatform.googleapis.com/v1/{RESOURCE_NAME}:streamQuery?alt=sse
+     {"classMethod": "stream_query",
+      "input": {"message": "<text>", "user_id": "<employee_id>", "session_id": "<id>"}}
+```
+
+`class_method` values must match the operations registered by the deployed app. The UI service uses these two calls and no others.
+
+## **C.2. Vertex AI Search Datastore Configuration**
+
+| Setting | Value | Reason |
+| :--- | :--- | :--- |
+| Datastore type | Unstructured, generic search | Policy documents are PDF and TXT |
+| Content config | `CONTENT_REQUIRED` | Enables chunk retrieval and citation offsets |
+| Parser | Layout parser | Preserves headings and tables, which policy documents rely on for scope statements |
+| Chunking | Layout-aware, target 500 tokens, overlap 100 tokens | Keeps a clause and its qualifying sentence in one chunk |
+| Ancestor headings in chunks | Enabled | A chunk that says "up to 10 days" is meaningless without its section title |
+| Embedding model | Datastore default (managed) | No tuning in MVP 1 |
+| Search type | Hybrid (semantic + keyword) | Policy queries mix natural language with exact terms such as "bereavement" |
+| Results per query | 5 chunks | Matches the context budget in §5.7.2 |
+| Ingestion trigger | Cloud Storage finalize event to Eventarc to incremental import | Supports the 15-minute SLA in §8.4 |
+
+## **C.3. Model Armor Template Configuration**
+
+Two templates. Both are created by Terraform and referenced by ID from §B.2.
+
+| Filter | Inbound template `hr-in` | Outbound template `hr-out` |
+| :--- | :--- | :--- |
+| Prompt injection and jailbreak | Enabled, confidence `LOW_AND_ABOVE` | Disabled |
+| Responsible AI: hate, harassment, sexual, dangerous | Enabled, `MEDIUM_AND_ABOVE` | Enabled, `LOW_AND_ABOVE` |
+| Sensitive Data Protection | Inspect and de-identify, template `hr-spii` | Inspect only, block on match |
+| Malicious URI | Enabled | Enabled |
+| Failure mode | Fail closed (§5.6.3) | Fail closed |
+
+SDP inspection template `hr-spii` covers: `US_SOCIAL_SECURITY_NUMBER`, `PHONE_NUMBER`, `EMAIL_ADDRESS`, `STREET_ADDRESS`, `CREDIT_CARD_NUMBER`, `IBAN_CODE`, `PASSPORT`. Transformation is `replace_with_info_type`, producing `[PHONE_NUMBER]` style placeholders as shown in §4.5.
+
+Inbound confidence is set one level lower than outbound because a missed injection is more costly than a false positive on input, where the user can rephrase. `M-6` bounds the resulting false-positive rate at 1%.
+
+## **C.4. Callback Interfaces**
+
+All four callbacks use the ADK callback signature. Registration happens in `agent.py`.
+
+```python
+from google.adk.agents import Agent
+from google.adk.tools import BaseTool
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.tools.tool_context import ToolContext
+from typing import Any, Optional
+
+def before_tool(tool: BaseTool, args: dict[str, Any],
+                tool_context: ToolContext) -> Optional[dict]:
+    """Returning a dict short-circuits the tool call and returns that dict
+    to the model as the tool result. Returning None allows the call."""
+
+def after_model(callback_context: CallbackContext, llm_response) -> Optional[Any]:
+    """Outbound Model Armor inspection and citation resolution."""
+
+root_agent = Agent(
+    name="hr_assistant",
+    model=os.environ["AGENT_MODEL"],
+    instruction=SYSTEM_INSTRUCTION,
+    tools=[policy_search_tool, *workweek_mcp.get_tools(), *si_mcp.get_tools()],
+    before_model_callback=armor_inbound,
+    after_model_callback=armor_outbound,
+    before_tool_callback=chain(identity_guard, governance_guard, confirmation_guard),
+)
+```
+
+Execution order for every tool call is fixed: `identity_guard`, then `governance_guard`, then `confirmation_guard`. Each returns `None` to pass or a refusal dict to stop. The chain stops at the first refusal, so an identity violation is never evaluated against the tool allowlist and never reaches the confirmation check.
+
+| Callback | Refusal dict returned to the model | Audit event |
+| :--- | :--- | :--- |
+| `identity_guard` | `{"error": "ACCESS_DENIED", "message": "You can only access your own records."}` | `governance.identity_mismatch` |
+| `governance_guard` | `{"error": "TOOL_NOT_AVAILABLE"}` | `governance.tool_denied` |
+| `confirmation_guard` | `{"error": "CONFIRMATION_REQUIRED", "payload": {...}}` | `confirmation.requested` |
+
+## **C.5. Confirmation State**
+
+Pending confirmations are stored in the ADK session state, not in an external store. Key `pending_mutation`, value:
+
+```json
+{
+  "tool_name": "update_personal_info",
+  "args_hash": "sha256:9f2c...",
+  "args": {"employee_id": "EMP-1002", "address": "...", "phone": "..."},
+  "shown_at": "2026-08-06T09:14:22Z",
+  "expires_at": "2026-08-06T09:19:22Z"
+}
+```
+
+`confirmation_guard` permits a call only when `tool_name` matches, `sha256(canonical_json(args))` equals `args_hash`, and `now < expires_at`. The entry is deleted after one use, so a confirmation cannot be replayed for a second mutation.
+
+## **C.6. Audit Log Schema**
+
+One structured row per tool call, allowed or refused, written to Cloud Logging and routed to BigQuery table `audit.tool_invocations`.
+
+| Field | Type | Notes |
+| :--- | :--- | :--- |
+| `timestamp` | TIMESTAMP | |
+| `session_id` | STRING | |
+| `turn_id` | STRING | |
+| `employee_id` | STRING | Hashed after 30 days per §4.6 |
+| `automation_source` | STRING | Constant `Agentic_HR_Assistant` (`FR-1.2`) |
+| `agent_version` | STRING | From `APP_VERSION` |
+| `mcp_server` | STRING | `WorkWeek`, `ServiceImmediately`, `VertexRAG` |
+| `tool_name` | STRING | |
+| `decision` | STRING | `ALLOWED`, `DENIED_IDENTITY`, `DENIED_TOOL`, `DENIED_CONFIRMATION`, `DENIED_ARMOR` |
+| `request_payload` | JSON | SPII-redacted |
+| `response_status` | INT64 | |
+| `latency_ms` | INT64 | |
+| `error_code` | STRING | Nullable |
+
+Partitioned by `DATE(timestamp)`, clustered on `employee_id` and `tool_name`. `M-12` queries this table; `M-15` scans `request_payload` for unmasked SPII patterns.
+
+## **C.7. Service Sizing**
+
+| Service | CPU | Memory | Concurrency | Min / Max instances |
+| :--- | :---: | :---: | :---: | :---: |
+| `hr-assistant-ui` (Cloud Run) | 1 | 512 MiB | 80 | 1 / 10 |
+| Agent Runtime | Managed | Managed | Managed | Platform default |
+| DLQ worker (Cloud Run job) | 1 | 512 MiB | 1 | 0 / 3 |
+
+Minimum one instance on the UI service avoids a cold start on the first request of the day, which would consume roughly 2 seconds of the 10-second budget in §5.7.2. Sizing is derived from `A-5`.
+
+## **C.8. Terraform Resource Inventory**
+
+Module contents, so the tree in §7.3 can be implemented directly.
+
+| Module | Resources |
+| :--- | :--- |
+| `networking_security` | `google_project_service` (10 APIs), `google_service_account` x3 (agent, ui, ci), `google_project_iam_member` bindings, `google_secret_manager_secret` + version for `mcp-service-pat`, `google_iap_web_backend_service_iam_member` |
+| `vertex_search` | `google_discovery_engine_data_store`, `google_discovery_engine_search_engine`, `google_storage_bucket` for the policy corpus, `google_eventarc_trigger` for incremental import |
+| `model_armor` | `google_model_armor_template` x2 (`hr-in`, `hr-out`), `google_data_loss_prevention_inspect_template` for `hr-spii` |
+| `agent_runtime` | `google_storage_bucket` for staging, `google_artifact_registry_repository`, BigQuery dataset `audit` and table `tool_invocations`, log sink to BigQuery |
+| `fast_mcp_servers` | MVP 1 targets externally hosted mock services, so this module contains only outbound configuration: no Cloud Run service is created. It becomes active when the real WorkWeek and ServiceImmediately connectors are hosted in project scope. |
+| `observability` | `google_monitoring_dashboard`, `google_monitoring_alert_policy` x4 (see C.9), `google_logging_metric` for `schema_drift_count` |
+
+## **C.9. Dashboards and Alerts**
+
+One dashboard, `HR Assistant Health`, with six charts: turns per minute, p95 time to first token, p95 safety overhead, refusal rate by reason, tool error rate by server, and grounding pass rate.
+
+| Alert | Condition | Severity | Routing |
+| :--- | :--- | :---: | :--- |
+| Latency breach | p95 time to first token above 10 s for 10 minutes | P2 | Agent lead |
+| Safety overhead breach | p95 safety span above 300 ms for 10 minutes | P3 | Agent lead |
+| Model Armor unavailable | Any fail-closed refusal | P1 | On-call |
+| Schema drift | `schema_drift_count` above 0 | P1 | Integration lead |
+| Grounding pass rate drop | Below 90% over 1 hour | P2 | HR content owner |
+| Identity mismatch | Any `governance.identity_mismatch` event | P1 | Security lead |
+
+Identity mismatch is P1 at any volume. A single occurrence means either a model defect or an attack, and both require investigation before the next release.
+
+## **C.10. Evaluation Dataset Format**
+
+All five files use the same record shape, so `run_eval.py` has one parser.
+
+```json
+{
+  "id": "pq-014",
+  "suite": "policy_qa",
+  "input": "What is the company's bereavement leave policy?",
+  "context": {"employee_id": "EMP-1002", "session_seed": null},
+  "expect": {
+    "kind": "grounded_answer",
+    "must_cite": ["gs://hr-policies/leave-policy-v4.pdf#section-7"],
+    "must_contain": ["3 days", "immediate family"],
+    "must_not_contain": ["5 days"],
+    "must_refuse": false
+  },
+  "tags": ["leave", "answerable"]
+}
+```
+
+`expect.kind` takes one of: `grounded_answer`, `refusal`, `tool_call`, `blocked`. For `tool_call`, `expect` additionally carries `tool_name` and `args_subset`, and the runner asserts the backend state by read-back rather than by inspecting the reply text.
+
+## **C.11. Rollback**
+
+| Failure detected | Action | Time to recover |
+| :--- | :--- | :---: |
+| Bad agent release | Route Agent Runtime traffic to the previous deployment resource; the prior version is retained for 30 days | Under 5 minutes |
+| Bad UI release | `gcloud run services update-traffic hr-assistant-ui --to-revisions=<prev>=100` | Under 2 minutes |
+| Bad Model Armor template | Revert the template version; templates are versioned and Terraform-managed | Under 5 minutes |
+| Bad policy corpus import | Re-import from the previous corpus snapshot in the versioned Cloud Storage bucket | Under 15 minutes |
+| Bad Terraform change | `terraform apply` of the previous state generation; state bucket has versioning enabled (§7.4) | Under 15 minutes |
+
+Rollback does not require a code change or a rebuild in any of the five cases. Canary at 10% (§7.2) exists so that a bad release is detected before full traffic exposure.
+
+## **C.12. Contingency for T-1**
+
+`T-1` probes the live MCP servers. If the tool names or argument names differ from §5.1, do not edit the agent to match undocumented behaviour. Instead:
+
+1. Record the probe output in `docs/mcp_probe_<date>.json` and commit it.
+2. Update §5.1 and `capability_manifest.yaml` from the probe, not from memory.
+3. If a required capability is absent from the MCP surface but present in `enterprise_services_openapi.json`, wrap the REST endpoint in a local tool rather than dropping the capability, and record the deviation in §10.
+4. If a capability is absent from both, it is a scope change. Raise it against `BRD §2.1` before proceeding.
+
+The probe output is a committed artefact because §5.1 is otherwise an assumption (`A-2`) with no evidence behind it.
