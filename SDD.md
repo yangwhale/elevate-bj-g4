@@ -28,19 +28,46 @@
 | **1.9** | 2026-08-06 | C. Yang (design review) | **Rendering fix.** GitHub reported "Unable to render rich display" on this file. Root cause: `;` is a statement separator in Mermaid, so three sequence-diagram messages containing a semicolon were truncated mid-message, breaking the enclosing `alt` block. Rewrote the three messages without semicolons. All 14 diagrams now parse cleanly against the Mermaid v11 parser, verified programmatically rather than by eye. Also confirmed all seven `$$` math blocks are single-line and contain no `\\`, which GitHub renders incorrectly. |
 | **1.10** | 2026-08-06 | C. Yang (design review) | **Rendering fix, round 2.** The §7.1 Gantt still failed on GitHub with `Cannot read properties of undefined (reading 'type')`. Cause: a task **name** containing a colon (`T-12 Resilience: retry, breaker, DLQ`). Gantt splits each line at the first `:`, so the remainder was parsed as task metadata and the comma-separated fragments produced an undefined field. Renamed with an em dash. Upgraded the verification harness from `mermaid.parse` to `mermaid.render` under jsdom — the previous round only proved the diagrams parse, and this failure was a render-stage failure that parsing could not catch. All 14 diagrams now render. |
 | **1.11** | 2026-08-06 | C. Yang (design review) | **Executability audit.** Audited the document by asking, for each build task in Appendix B, whether an implementer could complete it without asking a question. Thirteen could not. Added Appendix C to supply the missing values and interfaces: deployment method and invocation contract (Terraform cannot create an Agent Runtime instance, which the plan had implied), Vertex AI Search datastore settings, both Model Armor template configurations, ADK callback signatures and their fixed execution order, confirmation state layout, audit log schema with partitioning, service sizing, Terraform resource inventory per module, dashboard and alert policies, evaluation record format, rollback procedures for five failure classes, and a contingency for T-1 if the probed MCP surface disagrees with §5.1. |
+| **1.12** | 2026-08-06 | C. Yang (design review) | **Template conformance pass.** Checked the document against every instruction in `SDD_TEMPLATE.md` rather than against its section numbering. Four requirements were named by the template and absent here: §4 asks for **network isolation** (added §4.9, covering ingress, egress, the decision not to apply VPC-SC in MVP 1, and transit/rest encryption); §6 names **search storage** as a cost driver (the model priced queries but not index storage, corpus storage, Artifact Registry, or the Cloud Run UI itself — total corrected $\$160.18 \to \$178.66$, and a cost-structure ranking added); §7 asks for **deliverables** (added §7.5 with five milestones, their entry dependencies, deliverable artefacts, and the external dependencies the delivery team does not own); §1.3 asks for **hosting environments** (added a per-component hosting table). Rewrote §1.1, which described the challenge and the solution but never stated measurable business goals — now G-1 to G-6, each with a target, a BRD source and a §9.2 metric. |
 
 ---
 
 # **1\. Executive Summary & Scope Boundaries**
 
 ## **1.1. Business Overview & Context**
-Enterprise employees currently experience friction and high turnaround times when navigating disconnected backend UIs (WorkWeek for HCM, ServiceImmediately for ITSM) and static HR policy repositories. Simultaneously, HR and IT helpdesks face significant Tier 1 ticket loads for routine queries. 
 
-The **HR Agentic Solution (MVP 1)** introduces a secure, AI-driven virtual assistant designed to:
-* **Deflect Tier 1 HR/IT Inquiries:** Achieve a $\ge 40\%$ reduction in routine ticket volume within 6 months.
-* **Enable Conversational Transactions:** Execute core self-service actions (leave submission, contact updates, ticket tracking) conversationally.
-* **Demonstrate Cross-System Orchestration:** Multi-step intent resolution chaining Policy RAG, WorkWeek HCM, and ServiceImmediately ITSM.
-* **Enforce Zero-Trust AI Security:** 100% auditability, deny-by-default tool boundaries (§4.7), prompt-injection interception and SPII redaction via Google Cloud Model Armor, and — as a **separate** control — anti-hallucination grounding via Vertex AI `check_grounding` (§4.3.1). Confirmation is required before any change to enterprise state (§3.5).
+### **1.1.1. Business challenge**
+Employees needing a routine HR or IT outcome (checking a leave balance, booking time off, updating an address, raising or chasing a ticket, confirming what a policy allows) must locate the right system, authenticate to it, and navigate a UI built for administrators rather than for occasional users. Each of those interactions is individually small. In aggregate they generate the Tier 1 load that the HR and IT helpdesks absorb today, and they are the reason simple requests take days rather than minutes.
+
+### **1.1.2. Current-state pain points**
+| # | Pain point | Where it shows up today |
+| :-- | :--- | :--- |
+| P-1 | Knowledge is in documents, not in answers | Employees read a policy PDF and still ask a human whether it applies to them |
+| P-2 | Transactions require navigating administrative UIs | WorkWeek and ServiceImmediately are designed for practitioners; occasional users need help to complete a two-field task |
+| P-3 | Systems are disconnected | A request that spans policy, HCM and ITSM has no single place to start, so it becomes a helpdesk ticket by default |
+| P-4 | Tier 1 volume crowds out Tier 2 and 3 work | HR and IT specialists spend time on questions a document already answers |
+| P-5 | No audit trail across the journey | Actions taken in three systems on behalf of one request cannot be reconstructed from any single log |
+
+### **1.1.3. Business goals**
+Each goal carries the measure the business will judge it by. Every measure is traceable to `BRD §1` and `BRD §7`, and each is verified by a metric in §9.2.
+
+| Goal | Target | BRD source | Verified by |
+| :--- | :--- | :--- | :--- |
+| **G-1** Deflect Tier 1 HR and IT inquiries | $\ge 40\%$ reduction in routine ticket volume within 6 months | `BRD §1` | `M-21` (production analytics) |
+| **G-2** Enable conversational self-service transactions | 100% transaction correctness, no data corruption or unauthorised update | `BRD §7` | `M-7`, `M-8` |
+| **G-3** Prove cross-system orchestration is viable | All three `UC-2.x` flows pass end to end | `BRD §1`, `BRD §7` | UAT-1 (§9.3) |
+| **G-4** Answer from policy without inventing policy | $\ge 95\%$ accuracy, **0%** hallucinated policy facts | `NFR-3.1` | `M-1`, `M-2`, `M-3` |
+| **G-5** Establish enterprise AI governance | 100% audit coverage of allowed and blocked actions; bounded tool execution | `FR-1.1`, `FR-1.2`, `NFR-1.2` | `M-12`, `M-14` |
+| **G-6** Mitigate AI risk | 100% detection of known injection and jailbreak cases, $< 1\%$ false positives | `BRD §7` | `M-5`, `M-6` |
+
+**G-1 is the only goal this design cannot verify before launch.** Deflection is a behavioural outcome measured in production over six months; everything else is verifiable in UAT. The design's contribution to G-1 is to make G-2 through G-6 true, because an assistant that is inaccurate, unsafe or unable to complete a transaction will not deflect anything regardless of how it is promoted.
+
+### **1.1.4. What this solution is**
+The **HR Agentic Solution (MVP 1)** is a conversational assistant that:
+* Answers policy questions from an approved corpus, with citations, and refuses when the corpus does not contain the answer.
+* Executes self-service transactions in WorkWeek (HCM) and ServiceImmediately (ITSM) after explicit user confirmation.
+* Chains all three domains to resolve a single intent that no one system can satisfy alone.
+* Enforces zero-trust controls: deny-by-default tool boundaries (§4.7), prompt-injection interception and SPII redaction via Model Armor, grounding verification via `check_grounding` (§4.3.1), and complete audit coverage of both permitted and refused actions.
 
 ## **1.2. Scope Boundaries**
 
@@ -57,6 +84,19 @@ The **HR Agentic Solution (MVP 1)** introduces a secure, AI-driven virtual assis
 ## **1.3. Target Architecture Overview**
 
 The solution leverages Google ADK (Agent Development Kit) running on Google Cloud Agent Platform Agent Runtime, backed by Agent Runtime Session Service and Streamable HTTP FastMCP toolsets (`McpToolset`), protected by Google Cloud Model Armor.
+
+**Hosting environments.** Every component is managed or serverless; MVP 1 provisions no VM and no VPC.
+
+| Component | Hosted on | Region | Scaling |
+| :--- | :--- | :--- | :--- |
+| Chat frontend `hr-assistant-ui` | Cloud Run, behind IAP | `us-central1` | 1–10 instances, 80 concurrency (§C.7) |
+| Supervisor agent | Vertex AI Agent Runtime (managed) | `us-central1` | Platform-managed |
+| Session state | Agent Runtime Session Service (managed) | `us-central1` | Platform-managed |
+| Policy knowledge base | Vertex AI Search datastore | `global` multi-region | Platform-managed |
+| Safety interception | Model Armor templates | `us-central1` | Platform-managed |
+| Audit store | BigQuery dataset `audit` | `US` | Platform-managed |
+| WorkWeek / ServiceImmediately | **External to this project** — mock enterprise host reached over public HTTPS | n/a | Not owned by this delivery |
+| DLQ worker | Cloud Run job | `us-central1` | 0–3 instances |
 
 ```mermaid
 graph TD
@@ -681,6 +721,44 @@ The agent is constructed **only** from toolsets present in the manifest. A `befo
 
 *Partially closes `NFR-1.3`; DPIA and residency remain open as `D-8` / `D-10`.*
 
+## **4.9. Network Isolation & Egress Control**
+
+MVP 1 is a fully managed, serverless deployment. There is no VPC, no subnet and no VM, so isolation is enforced at the identity and service perimeter rather than at the network layer. Stating this explicitly matters, because "serverless" is often mistaken for "no network boundary to design".
+
+### **4.9.1. Ingress**
+| Entry point | Reachable from | Control |
+| :--- | :--- | :--- |
+| `hr-assistant-ui` (Cloud Run) | Public internet | **IAP required.** Ingress setting `all` with IAP enforced; unauthenticated requests never reach the container. |
+| Agent Runtime | Not public | Reachable only through the Vertex AI API with IAM. The UI service account holds `roles/aiplatform.user`; no other principal does. |
+| Vertex AI Search datastore | Not public | Google-internal only, IAM-gated |
+| BigQuery audit dataset | Not public | IAM, no authorized views to external principals |
+
+### **4.9.2. Egress**
+The only outbound destination outside Google Cloud is the mock enterprise host. That is an intentional, enumerated exception:
+
+| Destination | Reason | Control |
+| :--- | :--- | :--- |
+| `${WORKWEEK_MCP_URL}`, `${SERVICEIMMEDIATELY_MCP_URL}` | The systems of record | Allowlisted in `capability_manifest.yaml`; `X-MCP-Token` over TLS 1.2+ |
+| Google Cloud APIs | Platform | Default |
+| Anything else | — | **Not permitted.** The agent has no general HTTP tool and no code execution tool, so there is no path for it to reach an arbitrary host (§4.7.2). |
+
+The absence of a general fetch tool is the egress control. Adding one would create an exfiltration channel that no allowlist at the network layer could close, because the request would originate from an allowed service.
+
+### **4.9.3. VPC Service Controls**
+Not applied in MVP 1, and this is a decision rather than an omission:
+
+* A VPC-SC perimeter around the project would block the outbound call to the mock enterprise host, which is the entire integration.
+* MVP 1 holds synthetic data only (§7.4), so the exfiltration risk a perimeter mitigates is not yet present.
+* **For production**, a perimeter around the project with the enterprise host added as an egress rule is the recommended posture, together with Private Google Access for the Cloud Run service. Tracked as `D-17`.
+
+### **4.9.4. Data in transit and at rest**
+| | Control |
+| :--- | :--- |
+| In transit, user to UI | TLS 1.3, Google-managed certificate |
+| In transit, UI to Agent Runtime | Google internal, encrypted |
+| In transit, agent to enterprise host | TLS 1.2+, certificate validation on; the token is never sent over plaintext |
+| At rest | Google-managed encryption keys throughout. CMEK is not used in MVP 1 because no customer key management requirement exists in the BRD; it is a production consideration under `D-17`. |
+
 ---
 
 # **5\. Integration Details & Error Handling**
@@ -886,14 +964,28 @@ $$C_{\text{Compute}} = (\text{vCPU-hours} \times \$0.024) + (\text{GB-hours} \ti
 
 | Cost Component | Monthly Volume | Unit Cost | Total Monthly Cost |
 | :--- | :--- | :--- | :--- |
-| **Gemini Flash Token Inference** | 135M Input Tokens / 27M Output Tokens | $\$0.075 / 1\text{M}$ In; $\$0.30 / 1\text{M}$ Out | $\$18.23$ |
-| **Vertex AI Search (RAG Queries)** | 30,000 Queries | $\$2.50 / 1,000\text{ queries}$ | $\$75.00$ |
-| **Google Cloud Model Armor** | 180,000 Inspections (2 per turn) | $\$0.10 / 1,000\text{ inspections}$ | $\$18.00$ |
-| **Vertex AI `check_grounding`** | 30,000 Checks (policy turns only) | $\$1.50 / 1,000\text{ checks}$ | $\$45.00$ |
-| **Cloud Run FastMCP Compute** | 50 vCPU-hrs / 100 GB-hrs | Minimum tier scale-to-zero | $\$1.45$ |
-| **Agent Runtime Session Service** | 30,000 Active Sessions | Included in Agent Platform tier | $\$0.00$ |
-| **Cloud Logging & BigQuery Audit** | 5 GB Log Storage | $\$0.50 / \text{GB}$ | $\$2.50$ |
-| **TOTAL ESTIMATED MONTHLY COST** | **10,000 MAU / 90k Turns** | **Overall Cost per MAU: $\approx \$0.0160$** | **$\$160.18 / \text{month}$** |
+| **Gemini Flash Token Inference** | 135M input / 27M output tokens | $\$0.075$ / $\$0.30$ per 1M | $\$18.23$ |
+| **Vertex AI Search — queries** | 30,000 queries | $\$2.50 / 1{,}000$ | $\$75.00$ |
+| **Vertex AI Search — index storage** | 250 MB indexed policy corpus | $\$5.00 / \text{GB-month}$ | $\$1.25$ |
+| **Vertex AI `check_grounding`** | 30,000 checks | $\$1.50 / 1{,}000$ | $\$45.00$ |
+| **Google Cloud Model Armor** | 180,000 inspections (2 per turn) | $\$0.10 / 1{,}000$ | $\$18.00$ |
+| **Cloud Run — `hr-assistant-ui`** | 1 vCPU / 512 MiB, `min-instances = 1` | $\$0.024$ vCPU-hr, $\$0.0025$ GB-hr | $\$18.43$ |
+| **Cloud Storage — corpus + session archive** | 250 MB Standard + ~600 MB Nearline | $\$0.020$ / $\$0.010$ per GB-month | $\$0.05$ |
+| **Artifact Registry** | ~2 GB container images | $\$0.10 / \text{GB-month}$ | $\$0.20$ |
+| **Agent Runtime Session Service** | 30,000 active sessions | Included in the Agent Platform tier | $\$0.00$ |
+| **Cloud Logging & BigQuery audit** | 5 GB log storage | $\$0.50 / \text{GB}$ | $\$2.50$ |
+| **TOTAL ESTIMATED MONTHLY COST** | **10,000 MAU / 90k turns** | **Cost per MAU: $\approx \$0.0179$** | **$\$178.66 / \text{month}$** |
+
+### **6.2.1. Where the money actually goes**
+| Rank | Driver | Share | Lever |
+| :--: | :--- | :---: | :--- |
+| 1 | Vertex AI Search queries | 42% | Cache identical policy questions inside a session; deduplicate near-identical queries |
+| 2 | `check_grounding` | 25% | Only invoked on policy turns; already scoped. Raising the threshold does not reduce calls |
+| 3 | Model Armor | 10% | Fixed at 2 per turn by the safety design. Not reducible without weakening `FR-1.3` |
+| 4 | Cloud Run `min-instances = 1` | 10% | Set to 0 and accept a ~2 s cold start on the first request of the day (§C.7). This is a latency/cost trade, not waste |
+| 5 | Gemini inference | 10% | The smallest line. Moving to a Pro tier (`D-16`) would multiply it ~8× and make it rank 1 |
+
+**Token inference is not the dominant cost at this scale.** Retrieval and safety are. Optimisation effort spent shortening prompts would move 10% of the bill; caching repeated policy queries would move 42%.
 
 > **Pricing validity.** Unit prices above are list prices captured on 2026-08-06 and are **not contractual**. `D-6` in §10 tracks re-validation against the current Google Cloud price list before the production business case is signed off. A $\pm 30\%$ swing in unit prices moves the total between $\approx\$112$ and $\approx\$208$/month — immaterial at MVP scale, material at 1M MAU.
 
@@ -979,6 +1071,25 @@ terraform/
 * **Configuration lives in three places and nowhere else**: Terraform variables (infrastructure), Cloud Run environment variables (the §B.2 table), and Secret Manager (credentials). No `.env` file is committed; a CI check fails the build if one appears.
 * **Every environment variable in §B.2 is emitted as a Terraform output**, so a drift between what Terraform built and what the service reads is impossible by construction.
 * **Promotion is by immutable container digest**, never by rebuilding from a tag. The digest that passed staging is the digest that reaches production.
+
+## **7.5. Milestones, Dependencies & Deliverables**
+
+| Milestone | Date | Entry dependency | Deliverables |
+| :--- | :--- | :--- | :--- |
+| **M1 — Foundation complete** | 2026-08-12 | Argolis project with billing; IAP access to the mock enterprise host so an MCP token can be minted | `docs/mcp_probe_<date>.json`; `terraform/` applying cleanly in `dev`; populated Vertex AI Search datastore; `capability_manifest.yaml`; §5.1 reconciled against the probe (`D-15` closed) |
+| **M2 — Agent functional** | 2026-08-25 | M1 | `agent/` with all four callbacks; `UC-1.1`–`UC-1.3` passing end to end; `M-2`, `M-3`, `M-4`, `M-9`, `M-14` green; named Cloud Trace spans emitting |
+| **M3 — Orchestration + UI** | 2026-08-31 | M2 | `UC-2.1`–`UC-2.3` passing including partial-failure paths; `ui/` deployed behind IAP with SSE; DLQ worker; circuit breaker; schema-drift interceptor |
+| **M4 — Gates enforceable** | 2026-09-02 | M3 | CI pipeline per §7.2; all five evaluation datasets committed; `run_eval.py` emitting the §9.2 metric table |
+| **M5 — Acceptance** | 2026-09-08 | M4 | Full §9.2 metric report; UAT-1 to UAT-4 sign-offs; dashboard and six alert policies live; rollback drill executed per §C.11; Definition of Done (§B.6) checked |
+
+### **External dependencies not owned by the delivery team**
+| Dependency | Owner | Needed by | Impact if late |
+| :--- | :--- | :--- | :--- |
+| MCP service token, and IAP access to mint it | Course / mock-host owner | Day 1 | Blocks T-1, therefore everything |
+| HR policy corpus in final form | HR content owner | M1 | `policy_qa` ground truth cannot be authored; slips M4 |
+| Model Armor availability in the target project | Platform | M2 | Forces a redesign of §4.3, reopening `D-3` |
+| `D-9`, `D-11` decisions | Architecture lead, HR | M4 | Acceptance thresholds undefined, so UAT cannot conclude |
+| `D-8`, `D-10` (DPIA, residency) | DPO | Before production data | UAT can still run on synthetic data; production launch blocks |
 
 ---
 
@@ -1122,6 +1233,7 @@ Assumptions live in §8.1. This section tracks **decisions**: those already clos
 | **D-6** | Re-validate **unit prices** in §6 against the current price list. | The business case, not the build. | FinOps | Before production business case | **Open** |
 | **D-15** | Does the FastMCP surface expose the **exact tool names and argument names** assumed in §5.1? `enterprise_services_openapi.json` documents REST only (`A-2`). | §5.1 is the implementation contract; if it is wrong every tool call fails. **Highest-risk open item.** | Integration lead | **Day 1 of Phase 1** | **Open** |
 | **D-16** | Which **Gemini tier** clears the `NFR-3.1` bar (`A-7`)? | Flash vs Pro changes `C_LLM` ≈8× and the latency budget in §5.7. | Agent lead | End of Phase 2 | **Open** |
+| **D-17** | Apply **VPC Service Controls** and **CMEK** for production? §4.9.3 explains why neither is used in MVP 1. | A perimeter must be designed before real employee data is loaded, and it interacts with `D-10` residency. | Security lead | Before production | **Open** |
 
 ---
 
