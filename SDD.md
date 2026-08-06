@@ -7,9 +7,9 @@
 | Field | Value |
 | :---- | :---- |
 | Author(s) | Solution Architecture Team |
-| Date | 2026-08-05 |
-| Status | Approved |
-| Target Audience | Enterprise Architecture, HR Engineering, IT Operations, Security & Compliance |
+| Date | 2026-08-06 |
+| Status | Under Review |
+| Target Audience | Enterprise Architecture, HR Engineering, IT Operations, Security & Compliance, **and the implementation agent/team building MVP 1** |
 
 ## **Revision History**
 
@@ -20,6 +20,7 @@
 | 1.1 | 2026-08-05 | Solution Architecture Team | Incorporated confirmed architectural selections: Google Cloud Model Armor, Vertex AI Search RAG, and Agent Platform Agent Runtime Session Service |
 | 1.2 | 2026-08-05 | Solution Architecture Team | Added complete BRD Requirement Traceability Matrix, all Use Case sequence flows (UC-1.1 through UC-2.3), and zero-caching real-time fetch specifications |
 | 1.3 | 2026-08-05 | Solution Architecture Team | Refined design per stakeholder feedback (Alex Rivera, IT Director & Maria Santos, DPO): added rate-limiting specs, DR failover, OBO token revocation, RBAC matrix, GDPR Art. 17 purging, pre-LLM PII masking, ERD data models, FinOps cost formulas, and IaC/CICD pipeline |
+| **1.4** | 2026-08-06 | C. Yang (design review) | **Correctness pass.** Resolved 6 blocking defects found in review: (1) ticket state machine contradicted `FR-4.3`; (2) RBAC matrix denied a capability the BRD scopes in; (3) the traceability matrix claimed by v1.2 did not exist — now added as Appendix A; (4) Model Armor was mis-specified as a hallucination detector — grounding split into §4.3.1; (5) `add_ticket_comment` parameter did not match the OpenAPI contract; (6) Model Armor cost under-counted inspections by 2×. Status downgraded `Approved` → `Under Review`. |
 
 ---
 
@@ -372,22 +373,63 @@ graph LR
     MaskPII --> FinalResponse[User Response]
 ```
 
-1. **Google Cloud Model Armor Protection (`FR-1.3`)**: Intercepts prompt injection, jailbreak attempts, and off-topic interactions before reaching agent models.
-2. **Output Validation (`FR-1.3`, `FR-5.4`)**: Validates model output against grounded retrieved context to guarantee 0% hallucinated policies.
-3. **Data Masking (`FR-1.4`)**: Model Armor redacts SSNs, phone numbers, and addresses from log files and history.
-4. **Audit Logging (`FR-1.2`, `NFR-1.2`, `FR-4.1`)**: Logs all tool calls with `automation_source: "Agentic_HR_Assistant"`, caller ID, execution status, and timestamp.
+The pipeline has **two distinct responsibilities that must not be conflated**: Model Armor handles *malicious and unsafe content*; a separate grounding verifier handles *factual faithfulness*. Model Armor does not perform fact-checking against retrieved documents.
+
+| # | Control | Implemented by | Covers |
+| :-- | :--- | :--- | :--- |
+| 1 | Prompt injection / jailbreak / off-topic interception | **Model Armor** — `prompt_injection_and_jailbreak` filter, `RAI` filters, custom topic denylist | `FR-1.3` (input), `FR-5.4` domain containment |
+| 2 | Toxicity / unsafe output blocking | **Model Armor** — `RAI` output filter | `FR-1.3` (output), `NFR-1.1` |
+| 3 | SPII detection & redaction | **Model Armor** — `sdp` (Sensitive Data Protection) basic + advanced inspection templates | `FR-1.4` |
+| 4 | **Grounding / anti-hallucination** | **Vertex AI `check_grounding` API** + citation resolver (§4.3.1) — **not** Model Armor | `FR-5.2`, `FR-5.4` strict grounding, `NFR-3.1` |
+| 5 | Citation integrity | Citation resolver: every returned `uri` is HEAD-checked against the Vertex AI Search datastore before rendering | `FR-5.3`, `FR-5.4` citation integrity |
+| 6 | Audit logging | Structured Cloud Logging sink → BigQuery, `automation_source: "Agentic_HR_Assistant"`, caller ID, decision, latency, timestamp | `FR-1.2`, `FR-4.1`, `NFR-1.2` |
+
+#### **4.3.1. Grounding Verification Loop (`FR-5.2`, `NFR-3.1`)**
+
+```mermaid
+graph LR
+    Draft["Draft answer + retrieved chunks"] --> CG{"Vertex AI check_grounding"}
+    CG -->|"support_score >= 0.7"| CiteCheck{"Citation resolver"}
+    CG -->|"support_score < 0.7"| Refuse["Refuse: 'I could not find this in the approved HR policies.'"]
+    CiteCheck -->|"all URIs resolve"| Emit["Emit answer with clickable deep links"]
+    CiteCheck -->|"any URI dead"| Refuse
+```
+
+* **Threshold**: answers with an aggregate `support_score < 0.7` are never emitted; the agent returns the explicit "not found" response required by `FR-5.2`.
+* **Claim-level check**: `check_grounding` returns per-claim support. Any unsupported claim is stripped before emission; if stripping empties the answer, the refusal path fires.
+* **Measured target**: `NFR-3.1` — $\ge 95\%$ accuracy with **0% hallucinated policy facts**, verified by the evaluation harness in §9.
 
 ## **4.4. Role-Based Access Control (RBAC) Matrix**
 
-| User Role | Vertex RAG Policy Search | WorkWeek: Read Profile/Balance | WorkWeek: Request/Cancel Leave | WorkWeek: Update Contact Info | ServiceImmediately: Query Tickets | ServiceImmediately: Create Ticket | ServiceImmediately: Update/Close Ticket |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Standard Employee** | ✅ Allowed | ✅ Self Only | ✅ Self Only | ✅ Self Only | ✅ Self Only | ✅ Self Only | ❌ Denied |
-| **Contractor** | ✅ Allowed | ✅ Self Only | ❌ Denied | ❌ Denied | ✅ Self Only | ✅ Self Only | ❌ Denied |
-| **HR Specialist** | ✅ Allowed | ✅ All Employees | ✅ Approved Scope | ✅ Approved Scope | ✅ Self Only | ✅ Self Only | ❌ Denied |
-| **IT Administrator** | ✅ Allowed | ✅ Self Only | ❌ Denied | ❌ Denied | ✅ All Tickets | ✅ Allowed | ✅ Allowed |
+### **4.4.1. MVP 1 Authorization Model (single role)**
 
-* **Role Revocation Sync Strategy**: User roles sync continuously from Okta / Enterprise Directory into Google Cloud IAM and FastMCP authorization cache via SCIM webhooks.
-* **Maximum Sync Delay**: Role revocations or status changes (e.g. suspension, resignation) propagate within $\le 60\text{ seconds}$, instantly blocking subsequent tool execution.
+`BRD §6` constrains MVP 1 to functional test credentials, no SSO, and a single tenant. MVP 1 therefore implements **exactly one role — Standard Employee — with self-scoped access**, enforced by comparing the `employee_id` in the tool call against the `employee_id` bound to the session (§4.2).
+
+| Capability | MVP 1 Standard Employee | Enforcement point |
+| :--- | :--- | :--- |
+| Vertex RAG policy search | ✅ Allowed (corpus is non-personal) | Agent tool allowlist |
+| WorkWeek: read profile / balances | ✅ Self only | FastMCP identity check → `403` on mismatch |
+| WorkWeek: request / cancel leave | ✅ Self only | FastMCP identity check |
+| WorkWeek: update contact info | ✅ Self only, requires confirmation (§3.5) | FastMCP identity check |
+| ServiceImmediately: query tickets | ✅ Self only (`requested_by == session employee_id`) | FastMCP identity check |
+| ServiceImmediately: create ticket | ✅ Self only | FastMCP identity check |
+| **ServiceImmediately: comment / update status** | **✅ Self only, own tickets** — required by `BRD §2.1`, `FR-4.2`, `UC-1.3` | FastMCP identity check + state machine (§5.1.3) |
+
+> **Correction note (v1.4).** Version 1.3 of this document denied ticket status updates to Standard Employees. That contradicted `BRD §2.1` ("Write Actions: … updating ticket status (e.g., to 'Resolved')"), `FR-4.2` and `UC-1.3`, all of which place employee-initiated status transitions **in scope for MVP 1**. The capability is restored above, bounded to the caller's own tickets and to legal transitions only.
+
+### **4.4.2. Multi-Role RBAC (Future State — not MVP 1)**
+
+The role model below depends on Enterprise SSO and directory sync, both explicitly out of scope for MVP 1 (`BRD §6`). It is recorded here as the target for the production rollout described in §2.1.
+
+| User Role | Vertex RAG Policy Search | WorkWeek: Read Profile/Balance | WorkWeek: Request/Cancel Leave | WorkWeek: Update Contact Info | SI: Query Tickets | SI: Create Ticket | SI: Update/Close Ticket |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Standard Employee** | ✅ Allowed | ✅ Self Only | ✅ Self Only | ✅ Self Only | ✅ Self Only | ✅ Self Only | ✅ Own tickets |
+| **Contractor** | ✅ Allowed | ✅ Self Only | ❌ Denied | ❌ Denied | ✅ Self Only | ✅ Self Only | ✅ Own tickets |
+| **HR Specialist** | ✅ Allowed | ✅ All Employees | ✅ Approved Scope | ✅ Approved Scope | ✅ Self Only | ✅ Self Only | ✅ Own tickets |
+| **IT Administrator** | ✅ Allowed | ✅ Self Only | ❌ Denied | ❌ Denied | ✅ All Tickets | ✅ Allowed | ✅ All tickets |
+
+* **Role Revocation Sync Strategy** *(future state)*: roles sync from Okta / Enterprise Directory into Google Cloud IAM and the FastMCP authorization cache via SCIM webhooks.
+* **Maximum Sync Delay** *(future state)*: revocations propagate within $\le 60\text{ seconds}$, blocking subsequent tool execution.
 
 ## **4.5. Pre-LLM PII/SPII Masking Pipeline**
 
@@ -444,8 +486,21 @@ sequenceDiagram
 | `list_tickets` | `employee_id: str` | Retrieves all incident tickets requested by the employee (`FR-4.2`). |
 | `get_ticket_details` | `ticket_id: str` | Fetches status, category, short desc, priority, assignee, and complete comment timeline (`FR-4.2`). |
 | `create_ticket` | `requested_by: str`, `category: str`, `short_description: str`, `priority: str`, `assignment_group: str` | Creates incident. Rejects duplicate submissions within 5 mins (`FR-4.3`). Priority `'1 - Critical'` requires outage/downtime keywords (`FR-4.3`). |
-| `add_ticket_comment` | `ticket_id: str`, `author: str`, `comment: str` | Appends comment to ticket activity log timeline (`FR-4.2`). |
-| `update_ticket_status` | `ticket_id: str`, `status: str`, `resolution_notes: str`, `updated_by: str` | Enforces state machine: `New -> In Progress/Closed`, `In Progress -> Resolved/Closed`, `Resolved -> In Progress/Closed`. Closed tickets are immutable (`FR-4.3`). |
+| `add_ticket_comment` | `ticket_id: str`, `author: str`, `comment_text: str` | Appends comment to ticket activity log timeline (`FR-4.2`). Parameter name `comment_text` matches the `CommentCreateRequest` schema in `enterprise_services_openapi.json`. |
+| `update_ticket_status` | `ticket_id: str`, `status: str`, `resolution_notes: str` (default `""`), `updated_by: str` (default `"System"`) | Enforces the state machine defined in §5.1.3. **`New -> Closed` is rejected** per `FR-4.3`. Closed tickets are immutable. |
+
+### **3. Ticket Lifecycle State Machine (`FR-4.3`)**
+
+`FR-4.3` requires rejecting "direct transition from New to Closed". The authoritative transition table is:
+
+| From \ To | New | In Progress | Resolved | Closed |
+| :--- | :---: | :---: | :---: | :---: |
+| **New** | — | ✅ | ✅ | ❌ **Rejected (`FR-4.3`)** |
+| **In Progress** | ❌ | — | ✅ | ✅ |
+| **Resolved** | ❌ | ✅ (reopen) | — | ✅ |
+| **Closed** | ❌ | ❌ | ❌ | — (immutable) |
+
+Rejected transitions return `409 Conflict` with `error_code = INVALID_STATE_TRANSITION`; the agent surfaces the message defined in §5.2. A ticket that must be abandoned without work goes `New -> Resolved` (with `resolution_notes`) and then `Resolved -> Closed`.
 
 ---
 
@@ -507,8 +562,13 @@ $$C_{\text{RAG}} = Q_{\text{search}} \times P_{\text{search}}$$
 * $P_{\text{search}} = \$2.50 / 1,000\text{ queries}$.
 
 ### **3. Safety Interceptor Cost Formula ($C_{\text{Armor}}$)**
-$$C_{\text{Armor}} = N_{\text{turns}} \times P_{\text{Armor}}$$
+Model Armor is invoked **twice per conversation turn** — once on the inbound prompt (§4.5 pre-processor, which also performs SPII masking) and once on the outbound response. The inspection count is therefore $2\times$ the turn count, not $1\times$:
+$$C_{\text{Armor}} = N_{\text{turns}} \times K_{\text{inspections/turn}} \times P_{\text{Armor}}, \quad K = 2$$
 * $P_{\text{Armor}} = \$0.10 / 1,000\text{ inspection calls}$.
+
+### **5. Grounding Verification Cost Formula ($C_{\text{Ground}}$)**
+Only policy-answering turns invoke `check_grounding` (§4.3.1):
+$$C_{\text{Ground}} = Q_{\text{search}} \times P_{\text{ground}}, \quad P_{\text{ground}} = \$1.50 / 1{,}000\text{ checks}$$
 
 ### **4. FastMCP Compute Cost Formula ($C_{\text{Compute}}$)**
 $$C_{\text{Compute}} = (\text{vCPU-hours} \times \$0.024) + (\text{GB-hours} \times \$0.0025)$$
@@ -522,11 +582,14 @@ $$C_{\text{Compute}} = (\text{vCPU-hours} \times \$0.024) + (\text{GB-hours} \ti
 | :--- | :--- | :--- | :--- |
 | **Gemini Flash Token Inference** | 135M Input Tokens / 27M Output Tokens | $\$0.075 / 1\text{M}$ In; $\$0.30 / 1\text{M}$ Out | $\$18.23$ |
 | **Vertex AI Search (RAG Queries)** | 30,000 Queries | $\$2.50 / 1,000\text{ queries}$ | $\$75.00$ |
-| **Google Cloud Model Armor** | 90,000 Inspections | $\$0.10 / 1,000\text{ inspections}$ | $\$9.00$ |
+| **Google Cloud Model Armor** | 180,000 Inspections (2 per turn) | $\$0.10 / 1,000\text{ inspections}$ | $\$18.00$ |
+| **Vertex AI `check_grounding`** | 30,000 Checks (policy turns only) | $\$1.50 / 1,000\text{ checks}$ | $\$45.00$ |
 | **Cloud Run FastMCP Compute** | 50 vCPU-hrs / 100 GB-hrs | Minimum tier scale-to-zero | $\$1.45$ |
 | **Agent Runtime Session Service** | 30,000 Active Sessions | Included in Agent Platform tier | $\$0.00$ |
 | **Cloud Logging & BigQuery Audit** | 5 GB Log Storage | $\$0.50 / \text{GB}$ | $\$2.50$ |
-| **TOTAL ESTIMATED MONTHLY COST** | **10,000 MAU / 90k Turns** | **Overall Cost per MAU: $\approx \$0.0106$** | **$\$106.18 / \text{month}$** |
+| **TOTAL ESTIMATED MONTHLY COST** | **10,000 MAU / 90k Turns** | **Overall Cost per MAU: $\approx \$0.0160$** | **$\$160.18 / \text{month}$** |
+
+> **Pricing validity.** Unit prices above are list prices captured on 2026-08-06 and are **not contractual**. `D-6` in §10 tracks re-validation against the current Google Cloud price list before the production business case is signed off. A $\pm 30\%$ swing in unit prices moves the total between $\approx\$112$ and $\approx\$208$/month — immaterial at MVP scale, material at 1M MAU.
 
 ---
 
@@ -619,3 +682,64 @@ terraform/
 | **D-3** | **Safety Interceptor** | **Google Cloud Model Armor** for prompt injection defense, jailbreak prevention, PII masking, and output toxicity filtering (`FR-1.3`, `FR-1.4`). | Approved |
 | **D-4** | **Knowledge Base (RAG)** | **Vertex AI Search / Agent Builder Knowledge Base** with Cloud Storage ingestion, semantic chunking, and deep links (`FR-5.1` - `FR-5.5`). | Approved |
 | **D-5** | **Session Memory State** | **Google Cloud Agent Platform Agent Runtime Session Service** for multi-turn state management (`FR-2.2`). | Approved |
+| **D-6** | **Unit-price validity for the FinOps model** | List prices in §6 captured 2026-08-06; must be re-validated against the current Google Cloud price list before the production business case is signed. | **Open** |
+| **D-7** | **`FR-1.1` capability & lifecycle governance for MVP 1** | No MVP mechanism yet for ownership, version history, and hard tool-boundary enforcement. Agent Registry is future state (§2.3). | **Open** |
+| **D-8** | **`NFR-1.3` compliance adherence (GDPR / local labour law)** | §4.6 covers Art. 17 erasure only. Lawful basis, DPIA, cross-border transfer and data-residency positions are undocumented. | **Open** |
+| **D-9** | **`NFR-2.2` 99.9% availability for MVP 1** | DR design in §2.2 is future state; MVP 1 is single-region with no documented availability budget. | **Open** |
+---
+
+# **Appendix A — BRD Requirement Traceability Matrix**
+
+Every requirement in `BRD.md` is listed. `Design §` points at the section of this document that specifies *how* the requirement is met; `Verified by` names the artefact that proves it. A requirement with no design section is an open gap and is tracked in §10.
+
+## **A.1. Functional Requirements**
+
+| BRD ID | Requirement | Design § | Verified by |
+| :--- | :--- | :--- | :--- |
+| **FR-1.1** | Capability & lifecycle governance | *(gap — see D-7)* | *(gap)* |
+| **FR-1.2** | Verification of request origin | §4.1, §4.3 control 6 | Audit log parser asserts `automation_source` on 100% of tool calls (§9) |
+| **FR-1.3** | Verification of conversation safety | §4.3 controls 1–2, §4.5 | OWASP LLM Top-10 injection suite, 100% detection (§9) |
+| **FR-1.4** | Data masking / redaction | §4.3 control 3, §4.5, §3.3 ERD | SPII scanner over BigQuery audit sink returns zero unmasked matches (§9) |
+| **FR-1.5** | RBAC and data isolation | §4.2, §4.4.1 | Cross-tenant probe suite: every foreign `employee_id` returns `403` (§9) |
+| **FR-2.1** | Natural language understanding | §3.1 | NLU robustness set (typos/synonyms/ellipsis) qualitative pass (§9) |
+| **FR-2.2** | Multi-turn dialog | §1.4, §3.4 | Multi-turn regression suite; session isolation assertion (§9) |
+| **FR-3.1** | Delegated authorization | §4.1, §4.2 | Identity-mismatch probe returns `403` (§9) |
+| **FR-3.2** | WorkWeek core actions | §5.1.1 | FastMCP tool contract tests against `enterprise_services_openapi.json` (§7.2) |
+| **FR-3.3** | WorkWeek operation guardrails | §5.1.1, §5.2 | Boundary suite: over-balance, inverted dates, past dates, bad phone format (§9) |
+| **FR-3.4** | Real-time data fetch (no caching) | §4.2 | Cache-inspection test: two consecutive queries produce two backend calls (§9) |
+| **FR-4.1** | Auditable ticket creation | §4.3 control 6 | Every `create_ticket` log row carries `automation_source` (§9) |
+| **FR-4.2** | Status tracking & ticket management | §5.1.2, §4.4.1 | Tool contract tests + `UC-1.3` end-to-end (§9) |
+| **FR-4.3** | ServiceImmediately guardrails | §5.1.2, §5.1.3 | State-machine matrix test incl. `New -> Closed` rejection; 5-min duplicate window; priority-keyword check (§9) |
+| **FR-5.1** | Document ingestion | §1.2, §7.3 (`vertex_search` module) | Datastore document count matches source bucket (§9) |
+| **FR-5.2** | Grounded answers | §4.3.1 | `check_grounding` threshold test; refusal on out-of-corpus questions (§9) |
+| **FR-5.3** | Source citation | §4.3.1 citation resolver | Every policy answer carries $\ge 1$ resolvable deep link (§9) |
+| **FR-5.4** | Policy retrieval guardrails | §4.3 control 1, §4.3.1 | Off-topic denylist suite; dead-citation injection test (§9) |
+| **FR-5.5** | Document sync latency | §8 (15-minute SLA) | Timed ingestion probe: upload → searchable $\le 15$ min (§9) |
+
+## **A.2. Non-Functional Requirements**
+
+| BRD ID | Requirement | Design § | Verified by |
+| :--- | :--- | :--- | :--- |
+| **NFR-1.1** | Safety for AI interactions | §4.3 controls 1–2 | RAI + jailbreak suite (§9) |
+| **NFR-1.2** | Audit logging (incl. denied actions) | §4.3 control 6 | Log-coverage parser: allowed **and** blocked events both present (§9) |
+| **NFR-1.3** | Compliance adherence (GDPR, labour law) | *(gap — see D-8)* | *(gap)* |
+| **NFR-2.1** | Latency (<10 s; safety <300 ms) | §5.3, §6 | Cloud Trace p50/p95 per-span budget assertion (§9) |
+| **NFR-2.2** | Availability 99.9% | *(gap — see D-9)* | *(gap)* |
+| **NFR-2.3** | Asynchronous processing | §8 (`asyncio.gather`), §5.4 | Parallel-tool-call trace shows overlapping spans (§9) |
+| **NFR-3.1** | Accuracy $\ge 95\%$, 0% hallucination | §4.3.1, §9 | 100-question ground-truth set, LLM-as-judge (§9) |
+| **NFR-4.1** | Graceful failure handling | §5.2 | Fault-injection: no stack trace or internal code reaches the user (§9) |
+| **NFR-4.2** | Transient fault tolerance | §5.3 | Injected `429`/`503`: exactly 3 retries with jittered backoff (§9) |
+| **NFR-4.3** | Orchestration consistency | §5.2, §5.4 | Partial-failure drill: reference ID emitted and DLQ row created (§9) |
+
+## **A.3. Use Case Coverage**
+
+| BRD Use Case | Sequence diagram | Systems exercised |
+| :--- | :--- | :--- |
+| **UC-1.1** Policy Q&A | §3.2 | Vertex AI Search |
+| **UC-1.2** HR self-service (PTO) | §3.2 | WorkWeek |
+| **UC-1.3** IT incident management | §3.2 | ServiceImmediately |
+| **UC-2.1** Equipment procurement | §3.2 | Policy + WorkWeek + ServiceImmediately |
+| **UC-2.2** Short-term medical leave | §3.2 | Policy + WorkWeek + ServiceImmediately |
+| **UC-2.3** Relocation | §3.2 | Policy + WorkWeek + ServiceImmediately |
+
+**Coverage status at v1.4: 26 / 29 requirements designed, 3 open gaps (`FR-1.1`, `NFR-1.3`, `NFR-2.2`) tracked as `D-7` – `D-9` in §10.**
