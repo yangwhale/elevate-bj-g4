@@ -20,7 +20,8 @@
 | 1.1 | 2026-08-05 | Solution Architecture Team | Incorporated confirmed architectural selections: Google Cloud Model Armor, Vertex AI Search RAG, and Agent Platform Agent Runtime Session Service |
 | 1.2 | 2026-08-05 | Solution Architecture Team | Added complete BRD Requirement Traceability Matrix, all Use Case sequence flows (UC-1.1 through UC-2.3), and zero-caching real-time fetch specifications |
 | 1.3 | 2026-08-05 | Solution Architecture Team | Refined design per stakeholder feedback (Alex Rivera, IT Director & Maria Santos, DPO): added rate-limiting specs, DR failover, OBO token revocation, RBAC matrix, GDPR Art. 17 purging, pre-LLM PII masking, ERD data models, FinOps cost formulas, and IaC/CICD pipeline |
-| **1.4** | 2026-08-06 | C. Yang (design review) | **Correctness pass.** Resolved 6 blocking defects found in review: (1) ticket state machine contradicted `FR-4.3`; (2) RBAC matrix denied a capability the BRD scopes in; (3) the traceability matrix claimed by v1.2 did not exist — now added as Appendix A; (4) Model Armor was mis-specified as a hallucination detector — grounding split into §4.3.1; (5) `add_ticket_comment` parameter did not match the OpenAPI contract; (6) Model Armor cost under-counted inspections by 2×. Status downgraded `Approved` → `Under Review`. |
+| 1.4 | 2026-08-06 | C. Yang (design review) | **Correctness pass.** Resolved 6 blocking defects found in review: (1) ticket state machine contradicted `FR-4.3`; (2) RBAC matrix denied a capability the BRD scopes in; (3) the traceability matrix claimed by v1.2 did not exist — now added as Appendix A; (4) Model Armor was mis-specified as a hallucination detector — grounding split into §4.3.1; (5) `add_ticket_comment` parameter did not match the OpenAPI contract; (6) Model Armor cost under-counted inspections by 2×. Status downgraded `Approved` → `Under Review`. |
+| **1.5** | 2026-08-06 | C. Yang (design review) | **Coverage pass.** Closed the three requirements that had no design section at all: `FR-1.1` → §4.7 capability manifest with deny-by-default enforcement; `NFR-1.3` → §4.8 compliance posture; `NFR-2.2` → §5.6, which demonstrates arithmetically that 99.9% is unreachable in the single-region MVP and proposes options. Added §3.5 write-action confirmation protocol, §3.6 conversational frontend (in BRD scope but previously undesigned), and §5.7 turn latency budget decomposing the 300 ms safety cap across three calls. Rewrote §8 into falsifiable assumptions / constraints / owned risks, and §10 into closed vs open decisions with owners and deadlines. |
 
 ---
 
@@ -325,6 +326,52 @@ erDiagram
 * **Coldline Backup (30 Days – 90 Days)**: Transferred to Cloud Storage Coldline storage tier for cost-optimized compliance retention.
 * **Purge State (> 90 Days or Post-Offboarding)**: Automated Lifecycle Management rule executes hard deletion of session objects. Offboarded employee sessions are hard-purged within $\le 24\text{ hours}$.
 
+## **3.5. Write-Action Confirmation Protocol**
+
+Read tools execute immediately. **Every mutating tool requires an explicit user confirmation turn** before execution. This is what makes a prompt-injection payload that reaches the model still unable to mutate enterprise state, and it is why `UC-2.3` in the BRD says *"Prompt address update"* rather than *"update address"*.
+
+| Tool | Mutating | Confirmation required |
+| :--- | :---: | :--- |
+| `get_current_employee_id`, `get_employee_balances`, `get_personal_info`, `list_tickets`, `get_ticket_details`, Vertex policy search | ✗ | No |
+| `request_time_off`, `cancel_leave_request`, `update_personal_info` | ✓ | Yes — echo the exact payload, require affirmative reply |
+| `create_ticket`, `add_ticket_comment`, `update_ticket_status` | ✓ | Yes — echo the exact payload, require affirmative reply |
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Employee
+    participant Agent as ADK Agent
+    participant MCP as FastMCP Tool
+    Employee->>Agent: "Update my address to 10 Downing St, London"
+    Agent->>Agent: Classify intent = mutating -> build ConfirmationCard
+    Agent-->>Employee: "I will change your home address to '10 Downing St, London'.<br/>Your phone stays +44 20 7946 0912. Confirm? (yes / no)"
+    Employee->>Agent: "yes"
+    Agent->>Agent: Verify affirmative AND payload unchanged since it was shown
+    Agent->>MCP: update_personal_info(employee_id, address, phone)
+    MCP-->>Agent: 200 OK
+    Agent-->>Employee: "Address updated."
+```
+
+* **Payload pinning**: the confirmation stores a hash of the exact arguments in session state. If the arguments differ at execution time, the agent re-confirms instead of executing — this defeats a second-turn injection that mutates the pending payload.
+* **Confirmation expiry**: a pending mutation expires after 5 minutes or when the user changes topic.
+* **Ambiguous replies** ("ok maybe", "sure why not?") are treated as **not confirmed**; the agent re-asks once, then abandons.
+* **Cross-system flows (`UC-2.x`)**: confirmation is requested **once**, listing every mutation in the plan, before the first write executes. See §5.2 for partial-failure handling.
+
+## **3.6. Conversational Frontend (MVP 1)**
+
+`BRD §2.1` places a web chat interface in scope. MVP 1 uses the smallest thing that satisfies it.
+
+| Aspect | MVP 1 decision |
+| :--- | :--- |
+| **Hosting** | Single Cloud Run service `hr-assistant-ui` (FastAPI + static React bundle), same project and region as the Agent Runtime |
+| **Authentication** | Google Cloud **Identity-Aware Proxy** in front of Cloud Run. IAP injects `X-Goog-Authenticated-User-Email`; the backend maps it to `employee_id` via WorkWeek and binds it to the session. The browser never sees or supplies an `employee_id`. |
+| **Transport** | `POST /chat` for the turn; **Server-Sent Events** on `GET /chat/stream?session_id=…` for token streaming (`NFR-2.3`, perceived latency) |
+| **Session binding** | UI holds only an opaque `session_id`. All identity comes from the IAP header on the server side — the client cannot assert who it is. |
+| **Rendering** | Markdown with clickable citation links (`FR-5.3`); a distinct **confirmation card** component for §3.5 mutations; explicit "blocked by safety policy" state for Model Armor rejections |
+| **Out of scope** | Voice, file upload, mobile app, offline mode, notification push |
+
+> **Why not build identity into the UI:** any `employee_id` supplied by the browser is attacker-controlled. Deriving it server-side from the IAP assertion is what makes the tenant isolation in §4.2 actually hold; without it `FR-1.5` is unenforceable.
+
 ---
 
 # **4\. Security, Governance & Identity**
@@ -462,6 +509,65 @@ sequenceDiagram
   * Nearline Archived Logs: 30 days.
   * Anonymized Compliance Logs: 365 days.
 
+## **4.7. Capability & Lifecycle Governance (`FR-1.1`)**
+
+`FR-1.1` is an MVP-1 requirement, not a future-state one: the system must track ownership and version history, and **block any tool invocation outside the declared boundary**. MVP 1 satisfies it with three mechanisms that require no new platform:
+
+### **4.7.1. Capability manifest (source of truth)**
+`capability_manifest.yaml` is committed at the repository root and is the only place tool boundaries are declared:
+
+```yaml
+agent:
+  name: hr-agentic-assistant
+  version: 1.0.0                 # semver; must match the deployed Agent Runtime label
+  owner: hr-engineering@example.com
+  data_owner: dpo@example.com
+  brd_baseline: BRD.md@v1.0
+allowed_toolsets:
+  - id: vertex_policy_search
+    kind: vertex_ai_search
+    datastore: projects/${PROJECT}/locations/global/collections/default_collection/dataStores/hr-policies
+  - id: workweek
+    kind: mcp_streamable_http
+    url: ${WORKWEEK_MCP_URL}
+    allowed_tools: [get_current_employee_id, get_employee_balances, request_time_off,
+                    update_personal_info, get_personal_info, cancel_leave_request]
+  - id: service_immediately
+    kind: mcp_streamable_http
+    url: ${SERVICEIMMEDIATELY_MCP_URL}
+    allowed_tools: [list_tickets, get_ticket_details, create_ticket,
+                    add_ticket_comment, update_ticket_status]
+denied_by_default: true           # anything not listed above is refused
+```
+
+### **4.7.2. Runtime enforcement (deny by default)**
+The agent is constructed **only** from toolsets present in the manifest. A `before_tool_callback` re-checks each invocation against `allowed_tools`; an unlisted name is refused without calling the backend and emits `governance.tool_denied` to Cloud Logging with the attempted name, session, and caller. This closes the gap where a model hallucinates a tool name or a prompt-injection payload names an unregistered tool.
+
+### **4.7.3. Version & ownership traceability**
+| Artefact | Carries | Enforced by |
+| :--- | :--- | :--- |
+| Agent Runtime deployment | Label `app_version` = manifest `version`; `owner` label | CI gate fails the deploy if labels and manifest disagree |
+| Every audit log row | `agent_version`, `automation_source`, `session_id`, `employee_id` | Structured logger (§4.3 control 6) |
+| Every release | Git tag `v<semver>` + immutable container digest | CI records digest in the release notes |
+| Manifest change | Requires review by `owner` **and** `data_owner` | `CODEOWNERS` on `capability_manifest.yaml` |
+
+*Closes `D-7`.*
+
+## **4.8. Compliance Posture (`NFR-1.3`)**
+
+| Topic | MVP 1 position |
+| :--- | :--- |
+| **Lawful basis (GDPR Art. 6)** | Art. 6(1)(b) — processing necessary for performance of the employment contract (leave administration, IT support). No consent-based processing; no legitimate-interest balancing test required for the in-scope data. |
+| **Special-category data (Art. 9)** | `UC-2.2` (medical leave) can surface health-adjacent context. MVP 1 **must not** store diagnosis text: the agent submits leave as `leave_type = "Sick"` only and is instructed never to solicit or echo medical detail. Free-text medical content in a prompt is redacted by Model Armor SPII rules before persistence. |
+| **DPIA** | Required before production rollout (automated processing of employee data at scale). Owner: DPO. Tracked as `D-8`. |
+| **Data residency** | **Open risk.** MVP 1 deploys in `us-central1`, but `UC-2.3` describes a London office, i.e. EU/UK data subjects. Transferring employee personal data to the US requires an adequacy decision, SCCs, or an EU-region deployment. See `D-10`. |
+| **Retention & erasure** | §4.6 — 24 h active, 30 d nearline, 365 d anonymised; Art. 17 purge $\le 24$ h from the `employee.offboarded` event. |
+| **Data-subject access (Art. 15)** | Session transcripts are retrievable by `employee_id` from the BigQuery audit sink for the retention window; export runbook owned by the DPO. |
+| **Sub-processors** | All processing stays within Google Cloud services already covered by the customer's existing Data Processing Addendum. No third-party LLM or logging vendor is introduced. |
+| **Local labour law** | Leave entitlement rules live in WorkWeek, not in the agent. The agent never computes entitlement; it reads balances and submits requests, so jurisdiction-specific rules remain enforced by the system of record. |
+
+*Partially closes `NFR-1.3`; DPIA and residency remain open as `D-8` / `D-10`.*
+
 ---
 
 # **5\. Integration Details & Error Handling**
@@ -544,6 +650,77 @@ To protect backend enterprise services from overload during high-traffic spikes 
 * **Drift Detection**: Any unexpected field deletion, data type mutation, or breaking contract drift increments the Cloud Monitoring metric `custom.googleapis.com/mcp/schema_drift_count`.
 * **Automated Alerting**: A metric threshold rule triggers an automated High-Severity PagerDuty alert to the IT Integration Team when drift count $> 0$.
 * **Graceful Degradation**: The agent strips unparseable fields, logs the raw payload for audit, and renders a safe baseline view to the user.
+
+## **5.6. Availability Budget & Degradation Modes (`NFR-2.2`)**
+
+`NFR-2.2` sets 99.9% uptime. That number must be tested against the architecture rather than asserted.
+
+### **5.6.1. Composite availability of the MVP 1 (single-region) path**
+The full-transaction path is a **serial** dependency chain, so component availabilities multiply:
+
+| Component | Published / assumed monthly SLA |
+| :--- | :---: |
+| Agent Platform Agent Runtime | 99.9% |
+| Cloud Run (FastMCP × 2, UI) | 99.95% |
+| Vertex AI Search | 99.9% |
+| Model Armor | 99.9% |
+
+$$A_{\text{serial}} = 0.999 \times 0.9995 \times 0.999 \times 0.999 \approx 0.9965$$
+
+**≈ 99.65%, i.e. ~2 h 32 min of expected monthly downtime against the 43 min that 99.9% allows.**
+
+> **Finding: MVP 1 as designed cannot meet `NFR-2.2`.** No amount of retry logic fixes a serial chain whose product is below target. This is a design-level constraint, not an implementation defect.
+
+### **5.6.2. Options**
+| Option | Effect | Cost / effort |
+| :--- | :--- | :--- |
+| **A. Restate the MVP target as 99.5%** and hold 99.9% as the production target contingent on §2.2 dual-region | Honest; no engineering change | None |
+| **B. Bring §2.2 dual-region forward into MVP 1** | Composite rises to ≈99.95% | Doubles runtime cost; adds session-replication complexity |
+| **C. Measure *user-perceived* availability instead** — see §5.6.3 | Perceived ≈99.9% achievable single-region | Requires the degradation modes below |
+
+**Recommendation: A + C for MVP 1; B before production rollout.** Decision tracked as `D-9`.
+
+### **5.6.3. Degradation modes (what still works when a dependency is down)**
+The chain is only serial for transactions. Declaring per-capability fallbacks converts a total outage into a partial one:
+
+| Failed dependency | Still available | User-visible behaviour |
+| :--- | :--- | :--- |
+| WorkWeek FastMCP | Policy Q&A, all ticket operations | "WorkWeek is temporarily unavailable — I can still answer policy questions and handle IT tickets." |
+| ServiceImmediately FastMCP | Policy Q&A, all leave operations | Symmetric message; ticket intents queued to DLQ (§5.4) if the user opts in |
+| Vertex AI Search | All transactional operations | "I can't reach the policy library right now — I can still check your balance or raise a ticket." |
+| Model Armor | **Nothing — fail closed** | "The assistant is unavailable." Safety is never bypassed to preserve uptime. |
+| Agent Runtime | Nothing | Static maintenance page from the UI service |
+
+**Availability is measured per capability**, and the SLI is defined in §9: *fraction of turns that receive a non-error response for a capability whose dependencies are healthy*.
+
+## **5.7. Turn Latency Budget (`NFR-2.1`)**
+
+`NFR-2.1` sets two separate limits: response start < 10 s, and **safety scanning ≤ 300 ms per turn**. The safety budget must be decomposed because the architecture makes more than one safety call per turn.
+
+### **5.7.1. Safety budget allocation (hard cap 300 ms/turn)**
+| Safety call | When | Budget | Notes |
+| :--- | :--- | :---: | :--- |
+| Model Armor — inbound (injection + SPII masking, §4.5) | Every turn | **120 ms** | Single call performs both filters; do not issue two calls |
+| Model Armor — outbound (RAI + unmasked-data filter) | Every turn | **120 ms** | |
+| Citation resolver (HEAD checks, §4.3.1) | Policy turns only | **60 ms** | Parallel HEADs, 3 URIs max, `asyncio.gather` |
+| **Total** | | **300 ms** | |
+
+`check_grounding` is **excluded from the safety budget** — it is a quality control on the generation path, not an interception step, and is accounted for in the 10 s end-to-end budget below.
+
+### **5.7.2. End-to-end budget (p95, to first token)**
+| Phase | Simple policy turn | Cross-system turn (`UC-2.x`) |
+| :--- | :---: | :---: |
+| IAP + UI + session load | 150 ms | 150 ms |
+| Model Armor inbound | 120 ms | 120 ms |
+| Retrieval / tool calls | 700 ms (Vertex AI Search) | 1,800 ms (**parallel** RAG + WorkWeek; serial only where a real dependency exists) |
+| LLM planning + generation to first token | 1,500 ms | 2,600 ms (two planning hops) |
+| `check_grounding` | 400 ms | 400 ms (policy leg only) |
+| Model Armor outbound + citation resolve | 180 ms | 120 ms |
+| **p95 total to first token** | **≈ 3.1 s** | **≈ 5.2 s** |
+| **Headroom against the 10 s limit** | 6.9 s | 4.8 s |
+
+* **Parallelism is mandatory, not optional.** In `UC-2.1` the policy lookup and the WorkWeek profile fetch have no data dependency and must run under `asyncio.gather`; serialising them adds ≈700 ms and consumes headroom needed for retries (`NFR-2.3`).
+* **Instrumentation**: each row above is a named Cloud Trace span. §9 asserts the p95 of each span, so a regression is attributed to a phase rather than to "the agent got slower".
 
 ---
 
@@ -652,12 +829,50 @@ terraform/
 
 # **8\. Assumptions, Constraints, Risk & Mitigations**
 
-| Category | Risk / Constraint | Mitigation Strategy |
+## **8.1. Assumptions**
+
+Each assumption is stated so it can be **falsified**. If one proves false, the linked design section must be revisited before build.
+
+| # | Assumption | If false, revisit | Validated by / when |
+| :-- | :--- | :--- | :--- |
+| **A-1** | The mock enterprise services behave per `enterprise_services_openapi.json`, including the `New -> Closed` rejection and the 5-minute duplicate window. | §5.1, §5.2 | Contract tests in Phase 1 (§7.1) |
+| **A-2** | FastMCP tool names and argument names are identical to the REST field names in the OpenAPI file. The OpenAPI document specifies REST paths only; the MCP surface is **not** machine-documented. | §5.1 | MCP `tools/list` probe on day 1 of Phase 1 — **highest-risk assumption in this document** |
+| **A-3** | The HR policy corpus is < 1,000 documents of static PDF/TXT, no access-controlled subsets. | §1.2, §4.4.1 | Corpus inventory from HR before Phase 2 |
+| **A-4** | Every user of MVP 1 has exactly one WorkWeek `employee_id` resolvable from their corporate email. | §3.6, §4.2 | Directory sample of 100 users, Phase 1 |
+| **A-5** | Traffic is ≤ 10,000 MAU / 90k turns per month and is business-hours weighted (peak ≈ 6× mean). | §5.3, §6.2 | HR helpdesk volume baseline, Phase 1 |
+| **A-6** | Model Armor round-trip stays within the 300 ms turn budget for prompts ≤ 4 KB. | §5.7, `NFR-2.1` | Latency probe in Phase 2, before agent integration |
+| **A-7** | Gemini Flash-tier quality is sufficient for intent routing and grounded summarisation at the `NFR-3.1` accuracy bar. | §6.1, §9 | 100-question eval set, Phase 3 — fallback is a Pro-tier model, which multiplies `C_LLM` by ≈8× |
+| **A-8** | No employee data must remain in-region for EU/UK subjects during MVP 1 (test data only). | §4.8, `D-10` | DPO sign-off before any production data is loaded |
+
+## **8.2. Constraints**
+
+| # | Constraint | Consequence |
+| :-- | :--- | :--- |
+| **C-1** | `BRD §6` — functional test credentials only, no SSO/Okta/AD. | Single-role authorization (§4.4.1); the four-role matrix is future state. |
+| **C-2** | `BRD §6` — single tenant. | No tenant dimension in session, log, or datastore schemas. |
+| **C-3** | FastMCP requires the custom `X-MCP-Token` header because backend services sit behind GFE and bypass IAP. | Token stored in Secret Manager and injected at runtime (§4.1); never committed. |
+| **C-4** | `BRD §2.3` — no multi-lingual support. | Non-English prompts are answered in English or politely refused; no translation layer. |
+
+## **8.3. Risks & Mitigations**
+
+| # | Risk | Likelihood × Impact | Mitigation | Owner |
+| :-- | :--- | :---: | :--- | :--- |
+| **R-1** | MCP tool signatures differ from the REST contract (`A-2` false), invalidating §5.1. | Med × High | Probe `tools/list` on day 1; §5.1 is generated from the probe output, not hand-written. | Integration lead |
+| **R-2** | Duplicate ticket submission during retry storms. | Med × Med | Server-side 5-minute dedup window on identical `short_description` + `requested_by` (`FR-4.3`); client retries are idempotent by construction. | Integration lead |
+| **R-3** | Latency breach (>10 s) from serialised tool calls in `UC-2.x`. | Med × High | Independent calls run under `asyncio.gather`; policy retrieval and profile fetch overlap (`NFR-2.3`). Budget in §5.7. | Agent lead |
+| **R-4** | Prompt injection embedded **in a policy document** (indirect injection) reaches the model through RAG. | Low × High | Retrieved chunks are wrapped as untrusted data with delimiters; the system prompt forbids executing instructions found in retrieved content; §3.5 confirmation blocks any resulting mutation. | Security lead |
+| **R-5** | Partial cross-system failure leaves enterprise state inconsistent (`NFR-4.3`). | Med × High | Confirmation lists all mutations up front; failures emit a reference ID and a DLQ entry; §5.2 defines the user message. | Agent lead |
+| **R-6** | MVP cannot meet `NFR-2.2` 99.9% (see §5.6). | High × Med | Restate MVP target to 99.5% + per-capability degradation; dual-region before production. | Architecture lead |
+| **R-7** | Policy corpus contains stale or contradictory documents, producing confidently wrong grounded answers. | Med × High | Citation resolver surfaces the document and version; HR owns corpus currency; eval set includes known-contradiction cases. | HR content owner |
+| **R-8** | EU/UK data residency breach once real employee data is loaded (§4.8). | Med × High | Test data only until DPO sign-off; EU-region deployment option costed before production. | DPO |
+
+## **8.4. SLA Targets Derived from the BRD**
+
+| Target | Source | Design commitment |
 | :--- | :--- | :--- |
-| **Constraint** | FastMCP headers require `X-MCP-Token` due to GFE proxy rules. | Pre-configure `StreamableHTTPConnectionParams` with exact header specs in ADK config. |
-| **Risk** | Duplicate ticket submission during network retries. | FastMCP server enforces 5-minute deduplication window on identical short descriptions (`FR-4.3`). |
-| **Risk** | Latency breach ($>10\text{s}$) due to sequential tool calls. | Execute independent tool calls asynchronously using Python `asyncio.gather` (`NFR-2.3`). |
-| **SLA Target** | Policy Document Sync Latency (`FR-5.5`). | Automated Cloud Storage triggers sync policy updates into Vertex AI Search within 15 minutes (`FR-5.5`). |
+| Policy document sync latency | `FR-5.5` (BRD leaves `[X]` blank) | 15 minutes, via Cloud Storage → Eventarc → Vertex AI Search incremental import. **This value is a design proposal and needs business sign-off — see `D-11`.** |
+| Response start latency | `NFR-2.1` | < 10 s p95; safety overhead < 300 ms/turn, decomposed in §5.7 |
+| Availability | `NFR-2.2` | See §5.6 — 99.9% not achievable single-region; `D-9` open |
 
 ---
 
@@ -675,17 +890,33 @@ terraform/
 
 # **10\. Assumptions / Open Questions**
 
-| # | Topic / Question | Confirmed Architecture Selection | Status |
+Assumptions live in §8.1. This section tracks **decisions**: those already closed, and those still open with a named owner and a date by which the build is blocked.
+
+## **10.1. Closed Decisions**
+
+| # | Topic | Confirmed Selection | Status |
 | :- | :--- | :--- | :--- |
-| **D-1** | **Partial Cross-System Failure** | Log partial failure with a tracking reference ID and notify user with manual follow-up instructions (`NFR-4.3`). | Approved |
-| **D-2** | **MCP Token Credentials** | Pre-provisioned Service PAT in `X-MCP-Token` header; user `employee_id` passed in tool context (`FR-3.1`). | Approved |
-| **D-3** | **Safety Interceptor** | **Google Cloud Model Armor** for prompt injection defense, jailbreak prevention, PII masking, and output toxicity filtering (`FR-1.3`, `FR-1.4`). | Approved |
-| **D-4** | **Knowledge Base (RAG)** | **Vertex AI Search / Agent Builder Knowledge Base** with Cloud Storage ingestion, semantic chunking, and deep links (`FR-5.1` - `FR-5.5`). | Approved |
-| **D-5** | **Session Memory State** | **Google Cloud Agent Platform Agent Runtime Session Service** for multi-turn state management (`FR-2.2`). | Approved |
-| **D-6** | **Unit-price validity for the FinOps model** | List prices in §6 captured 2026-08-06; must be re-validated against the current Google Cloud price list before the production business case is signed. | **Open** |
-| **D-7** | **`FR-1.1` capability & lifecycle governance for MVP 1** | No MVP mechanism yet for ownership, version history, and hard tool-boundary enforcement. Agent Registry is future state (§2.3). | **Open** |
-| **D-8** | **`NFR-1.3` compliance adherence (GDPR / local labour law)** | §4.6 covers Art. 17 erasure only. Lawful basis, DPIA, cross-border transfer and data-residency positions are undocumented. | **Open** |
-| **D-9** | **`NFR-2.2` 99.9% availability for MVP 1** | DR design in §2.2 is future state; MVP 1 is single-region with no documented availability budget. | **Open** |
+| **D-1** | Partial cross-system failure | Log with a tracking reference ID, notify the user with manual follow-up instructions, emit a DLQ entry (`NFR-4.3`, §5.2/§5.4). | Approved |
+| **D-2** | MCP token credentials | Service PAT in `X-MCP-Token`, sourced from Secret Manager at runtime; user `employee_id` derived server-side from the IAP assertion, never from the client (`FR-3.1`, §3.6/§4.1). | Approved |
+| **D-3** | Safety interceptor | **Google Cloud Model Armor** for injection, jailbreak, RAI and SPII (`FR-1.3`, `FR-1.4`). Grounding is explicitly **not** in its scope — see D-12. | Approved |
+| **D-4** | Knowledge base (RAG) | **Vertex AI Search / Agent Builder** with Cloud Storage ingestion, semantic chunking, deep links (`FR-5.1`–`FR-5.5`). | Approved |
+| **D-5** | Session memory state | **Agent Runtime Session Service** for multi-turn state (`FR-2.2`). | Approved |
+| **D-12** | Anti-hallucination control | **Vertex AI `check_grounding`** + citation resolver at `support_score ≥ 0.7`, separate from Model Armor (§4.3.1, `FR-5.2`, `NFR-3.1`). | Approved (v1.4) |
+| **D-13** | Write-action safety | Every mutating tool requires an explicit confirmation turn with payload pinning (§3.5). | Approved (v1.5) |
+| **D-14** | MVP authorization model | Single role, self-scoped, enforced server-side; multi-role RBAC deferred to production (§4.4.1/§4.4.2, `C-1`). | Approved (v1.4) |
+
+## **10.2. Open Decisions — blocking, with owners**
+
+| # | Question | Why it blocks | Owner | Needed by | Status |
+| :- | :--- | :--- | :--- | :--- | :--- |
+| **D-9** | Do we accept **99.5%** as the MVP 1 availability target, or fund dual-region now? §5.6 shows 99.9% is unreachable single-region. | Determines whether §2.2 work lands in MVP or production phase; changes runtime cost ≈2×. | Architecture lead + Business sponsor | End of Phase 1 | **Open** |
+| **D-10** | **Data residency** for EU/UK subjects (`UC-2.3` London). US-region processing needs SCCs or an EU deployment. | Blocks loading any real employee data; may force a region change that invalidates §7.3 state. | DPO | Before Phase 3 UAT | **Open** |
+| **D-8** | **DPIA** completion and sign-off. | Regulatory precondition for production rollout with real data. | DPO | Before production | **Open** |
+| **D-11** | Confirm **15 minutes** as the `FR-5.5` policy-sync SLA (BRD leaves `[X]` blank). | Drives the ingestion trigger design and HR's publishing workflow expectations. | HR content owner | End of Phase 1 | **Open** |
+| **D-6** | Re-validate **unit prices** in §6 against the current price list. | The business case, not the build. | FinOps | Before production business case | **Open** |
+| **D-15** | Does the FastMCP surface expose the **exact tool names and argument names** assumed in §5.1? `enterprise_services_openapi.json` documents REST only (`A-2`). | §5.1 is the implementation contract; if it is wrong every tool call fails. **Highest-risk open item.** | Integration lead | **Day 1 of Phase 1** | **Open** |
+| **D-16** | Which **Gemini tier** clears the `NFR-3.1` bar (`A-7`)? | Flash vs Pro changes `C_LLM` ≈8× and the latency budget in §5.7. | Agent lead | End of Phase 2 | **Open** |
+
 ---
 
 # **Appendix A — BRD Requirement Traceability Matrix**
@@ -696,12 +927,12 @@ Every requirement in `BRD.md` is listed. `Design §` points at the section of th
 
 | BRD ID | Requirement | Design § | Verified by |
 | :--- | :--- | :--- | :--- |
-| **FR-1.1** | Capability & lifecycle governance | *(gap — see D-7)* | *(gap)* |
+| **FR-1.1** | Capability & lifecycle governance | §4.7 (manifest, deny-by-default callback, version/owner labels) | CI gate: manifest vs deployment labels; denied-tool probe emits `governance.tool_denied` (§9) |
 | **FR-1.2** | Verification of request origin | §4.1, §4.3 control 6 | Audit log parser asserts `automation_source` on 100% of tool calls (§9) |
 | **FR-1.3** | Verification of conversation safety | §4.3 controls 1–2, §4.5 | OWASP LLM Top-10 injection suite, 100% detection (§9) |
 | **FR-1.4** | Data masking / redaction | §4.3 control 3, §4.5, §3.3 ERD | SPII scanner over BigQuery audit sink returns zero unmasked matches (§9) |
 | **FR-1.5** | RBAC and data isolation | §4.2, §4.4.1 | Cross-tenant probe suite: every foreign `employee_id` returns `403` (§9) |
-| **FR-2.1** | Natural language understanding | §3.1 | NLU robustness set (typos/synonyms/ellipsis) qualitative pass (§9) |
+| **FR-2.1** | Natural language understanding | §3.1, §3.6 | NLU robustness set (typos/synonyms/ellipsis) qualitative pass (§9) |
 | **FR-2.2** | Multi-turn dialog | §1.4, §3.4 | Multi-turn regression suite; session isolation assertion (§9) |
 | **FR-3.1** | Delegated authorization | §4.1, §4.2 | Identity-mismatch probe returns `403` (§9) |
 | **FR-3.2** | WorkWeek core actions | §5.1.1 | FastMCP tool contract tests against `enterprise_services_openapi.json` (§7.2) |
@@ -722,10 +953,10 @@ Every requirement in `BRD.md` is listed. `Design §` points at the section of th
 | :--- | :--- | :--- | :--- |
 | **NFR-1.1** | Safety for AI interactions | §4.3 controls 1–2 | RAI + jailbreak suite (§9) |
 | **NFR-1.2** | Audit logging (incl. denied actions) | §4.3 control 6 | Log-coverage parser: allowed **and** blocked events both present (§9) |
-| **NFR-1.3** | Compliance adherence (GDPR, labour law) | *(gap — see D-8)* | *(gap)* |
-| **NFR-2.1** | Latency (<10 s; safety <300 ms) | §5.3, §6 | Cloud Trace p50/p95 per-span budget assertion (§9) |
-| **NFR-2.2** | Availability 99.9% | *(gap — see D-9)* | *(gap)* |
-| **NFR-2.3** | Asynchronous processing | §8 (`asyncio.gather`), §5.4 | Parallel-tool-call trace shows overlapping spans (§9) |
+| **NFR-1.3** | Compliance adherence (GDPR, labour law) | §4.8, §4.6 | DPO sign-off checklist; Art. 17 purge drill; residency decision `D-10` (§9) |
+| **NFR-2.1** | Latency (<10 s; safety <300 ms) | §5.7 (decomposed budget), §5.3 | Cloud Trace p50/p95 per-span budget assertion (§9) |
+| **NFR-2.2** | Availability 99.9% | §5.6 (budget, options, degradation modes) | Per-capability availability SLI (§9). **Target contested — see `D-9`** |
+| **NFR-2.3** | Asynchronous processing | §5.7 (`asyncio.gather` mandate), §5.4, §3.6 SSE | Parallel-tool-call trace shows overlapping spans (§9) |
 | **NFR-3.1** | Accuracy $\ge 95\%$, 0% hallucination | §4.3.1, §9 | 100-question ground-truth set, LLM-as-judge (§9) |
 | **NFR-4.1** | Graceful failure handling | §5.2 | Fault-injection: no stack trace or internal code reaches the user (§9) |
 | **NFR-4.2** | Transient fault tolerance | §5.3 | Injected `429`/`503`: exactly 3 retries with jittered backoff (§9) |
@@ -742,4 +973,4 @@ Every requirement in `BRD.md` is listed. `Design §` points at the section of th
 | **UC-2.2** Short-term medical leave | §3.2 | Policy + WorkWeek + ServiceImmediately |
 | **UC-2.3** Relocation | §3.2 | Policy + WorkWeek + ServiceImmediately |
 
-**Coverage status at v1.4: 26 / 29 requirements designed, 3 open gaps (`FR-1.1`, `NFR-1.3`, `NFR-2.2`) tracked as `D-7` – `D-9` in §10.**
+**Coverage status at v1.5: 29 / 29 requirements have a named design section and a named verification artefact.** Three carry open *decisions* rather than design gaps: `NFR-2.2` (target contested, `D-9`), `NFR-1.3` (DPIA + residency, `D-8`/`D-10`), `FR-5.5` (SLA value needs business sign-off, `D-11`).
