@@ -22,6 +22,7 @@
 | 1.3 | 2026-08-05 | Solution Architecture Team | Refined design per stakeholder feedback (Alex Rivera, IT Director & Maria Santos, DPO): added rate-limiting specs, DR failover, OBO token revocation, RBAC matrix, GDPR Art. 17 purging, pre-LLM PII masking, ERD data models, FinOps cost formulas, and IaC/CICD pipeline |
 | 1.4 | 2026-08-06 | C. Yang (design review) | **Correctness pass.** Resolved 6 blocking defects found in review: (1) ticket state machine contradicted `FR-4.3`; (2) RBAC matrix denied a capability the BRD scopes in; (3) the traceability matrix claimed by v1.2 did not exist — now added as Appendix A; (4) Model Armor was mis-specified as a hallucination detector — grounding split into §4.3.1; (5) `add_ticket_comment` parameter did not match the OpenAPI contract; (6) Model Armor cost under-counted inspections by 2×. Status downgraded `Approved` → `Under Review`. |
 | **1.5** | 2026-08-06 | C. Yang (design review) | **Coverage pass.** Closed the three requirements that had no design section at all: `FR-1.1` → §4.7 capability manifest with deny-by-default enforcement; `NFR-1.3` → §4.8 compliance posture; `NFR-2.2` → §5.6, which demonstrates arithmetically that 99.9% is unreachable in the single-region MVP and proposes options. Added §3.5 write-action confirmation protocol, §3.6 conversational frontend (in BRD scope but previously undesigned), and §5.7 turn latency budget decomposing the 300 ms safety cap across three calls. Rewrote §8 into falsifiable assumptions / constraints / owned risks, and §10 into closed vs open decisions with owners and deadlines. |
+| **1.6** | 2026-08-06 | C. Yang (design review) | **Consistency pass.** Sequence diagrams rewritten so they obey the rules the document states elsewhere: `UC-2.2` now checks the balance before submitting leave (it previously violated `FR-3.3`), `UC-2.1` uses a new `get_employee_profile` tool instead of reading `role` from `get_personal_info`, `UC-2.3` quotes the allowance from the retrieved citation instead of asserting a figure, and every mutation passes through §3.5 confirmation. Removed the hard-coded PAT and demo hostname from §4.1 in favour of Secret Manager plus a CI secret gate, and separated automation identity from user identity. Added §4.2.1 to resolve the apparent `FR-3.4` / §3.4 caching conflict, masked `agent_response` in the ERD, and re-derived the rate limits, which were previously above any achievable human rate. |
 
 ---
 
@@ -120,77 +121,93 @@ The production target architecture expands MVP 1 into a highly scalable, enterpr
 ## **3.1. Agent Design**
 The core system uses a **Supervisor Agent** running on Agent Runtime, orchestrating three specialized tool sets:
 * **Vertex AI Search Policy Tool**: Performs semantic vector search against policy documents in Cloud Storage, returning grounded answers with deep-link citations (`FR-5.1` - `FR-5.4`).
-* **WorkWeek MCP Toolset** (`/work-week/mcp/`): Exposes `get_current_employee_id`, `get_employee_balances`, `request_time_off`, `update_personal_info`, `get_personal_info`, and `cancel_leave_request` (`FR-3.1` - `FR-3.3`).
+* **WorkWeek MCP Toolset** (`/work-week/mcp/`): Exposes `get_current_employee_id`, `get_employee_profile`, `get_employee_balances`, `request_time_off`, `update_personal_info`, `get_personal_info`, and `cancel_leave_request` (`FR-3.1` – `FR-3.3`).
 * **ServiceImmediately MCP Toolset** (`/service-immediately/mcp/`): Exposes `list_tickets`, `get_ticket_details`, `create_ticket`, `add_ticket_comment`, and `update_ticket_status` (`FR-4.1` - `FR-4.3`).
 
 ---
 
 ## **3.2. Sequence Diagrams for All Use Cases**
 
+Every mutating step below routes through the confirmation protocol in §3.5. Every `employee_id` is injected by the runtime from session state (§4.1), never taken from the model.
+
 ### **UC-1.1: Policy Q&A Flow**
 ```mermaid
 sequenceDiagram
     autonumber
     actor Employee
-    participant UI as Chat UI
-    participant Armor as Google Cloud Model Armor
+    participant UI as Chat UI (IAP)
+    participant Armor as Model Armor
     participant Agent as ADK Agent / Runtime
     participant RAG as Vertex AI Search
+    participant CG as check_grounding
 
     Employee->>UI: "What is the company's bereavement leave policy?"
-    UI->>Armor: Inspect Input (Prompt Injection Check)
-    Armor-->>UI: Sanitized Input
-    UI->>Agent: Process Query
-    Agent->>RAG: Hybrid Search ("bereavement leave policy")
-    RAG-->>Agent: Relevant Excerpts + Document Metadata
-    Agent->>Armor: Validate Output (Grounding & Citation Check)
-    Armor-->>Agent: Approved Output
-    Agent-->>UI: Grounded Answer + Clickable Citation Link
-    UI-->>Employee: Display Answer with Deep Link
+    UI->>Armor: Inspect input (injection, jailbreak, SPII)
+    Armor-->>UI: PASS + masked prompt
+    UI->>Agent: Process query (session bound to employee_id)
+    Agent->>RAG: Hybrid search ("bereavement leave policy")
+    RAG-->>Agent: Ranked chunks + document URIs
+    Agent->>Agent: Draft answer from chunks only
+    Agent->>CG: check_grounding(draft, chunks)
+    alt support_score >= 0.7
+        CG-->>Agent: Supported (per-claim scores)
+        Agent->>Agent: Resolve citation URIs (HEAD)
+        Agent->>Armor: Inspect output (RAI, unmasked data)
+        Armor-->>Agent: PASS
+        Agent-->>UI: Grounded answer + clickable deep links
+    else support_score < 0.7 or dead citation
+        CG-->>Agent: Unsupported
+        Agent-->>UI: "I could not find this in the approved HR policies."
+    end
+    UI-->>Employee: Render answer or refusal
 ```
 
-### **UC-1.2: HR Self-Service - PTO Submission**
+### **UC-1.2: HR Self-Service — PTO Submission**
 ```mermaid
 sequenceDiagram
     autonumber
     actor Employee
     participant Agent as ADK Agent / Runtime
-    participant WW as "WorkWeek FastMCP (/work-week/mcp/)"
-    participant WW_DB as WorkWeek HCM Database
+    participant WW as WorkWeek FastMCP
+    participant WW_DB as WorkWeek HCM
 
     Employee->>Agent: "Submit PTO for next Thursday and Friday."
-    Agent->>WW: get_current_employee_id()
-    WW-->>Agent: employee_id = "EMP-1002"
-    Agent->>WW: get_employee_balances("EMP-1002")
-    WW->>WW_DB: Query PTO Balances (Real-time fetch)
-    WW_DB-->>WW: Vacation Balance: 40 hrs (5 days)
-    WW-->>Agent: Remaining Vacation Days = 5
-    Agent->>Agent: Validate Request (2 days requested <= 5 available, start <= end)
-    Agent->>WW: request_time_off("EMP-1002", "2026-08-13", "2026-08-14", "Vacation", 2)
-    WW->>WW_DB: Deduct 2 days & Create TimeOff Record
-    WW_DB-->>WW: Success (Request ID: 501)
-    WW-->>Agent: Confirmation Payload
-    Agent-->>Employee: "Your 2-day Vacation request (Aug 13-14) is confirmed. Balance remaining: 3 days."
+    Agent->>WW: get_employee_balances(employee_id)
+    WW->>WW_DB: Real-time balance read (no cache, FR-3.4)
+    WW_DB-->>WW: Vacation remaining = 5.0 days
+    WW-->>Agent: {vacation_remaining: 5.0}
+    Agent->>Agent: Validate 2.0 <= 5.0, start <= end, start >= today (FR-3.3)
+    Agent-->>Employee: "Submit 2.0 days Vacation, 2026-08-13 to 2026-08-14?<br/>Balance after: 3.0 days. Confirm? (yes / no)"
+    Employee->>Agent: "yes"
+    Agent->>Agent: Verify affirmative + payload hash unchanged (§3.5)
+    Agent->>WW: request_time_off(employee_id, "2026-08-13", "2026-08-14", "Vacation", 2.0)
+    WW->>WW_DB: Persist request, decrement balance
+    WW_DB-->>WW: {request_id: 501}
+    WW-->>Agent: Confirmation payload
+    Agent-->>Employee: "Request 501 confirmed. Vacation remaining: 3.0 days."
 ```
 
-### **UC-1.3: IT Incident Management - Status & Creation**
+### **UC-1.3: IT Incident Management — Status & Creation**
 ```mermaid
 sequenceDiagram
     autonumber
     actor Employee
     participant Agent as ADK Agent / Runtime
-    participant SI as "ServiceImmediately FastMCP (/service-immediately/mcp/)"
-    participant SI_DB as ServiceImmediately ITSM DB
+    participant SI as ServiceImmediately FastMCP
+    participant SI_DB as ServiceImmediately ITSM
 
-    Employee->>Agent: "Create an IT ticket because my VPN connection keeps dropping."
-    Agent->>SI: create_ticket(requested_by="EMP-1002", category="IT", short_description="VPN connection dropping", priority="3 - Moderate")
-    SI->>SI_DB: Scan 5-min Duplicate Window & Persist Ticket
-    SI_DB-->>SI: Ticket Created (ID: INC123456)
-    SI-->>Agent: {ticket_id: "INC123456", state: "New"}
-    Agent-->>Employee: "Incident ticket INC123456 created under Category 'IT' with Priority Moderate."
+    Employee->>Agent: "Create an IT ticket, my VPN keeps dropping."
+    Agent->>Agent: Priority heuristic -> "3 - Moderate" (no outage keywords, FR-4.3)
+    Agent-->>Employee: "Raise incident — Category IT, Priority 3 - Moderate,<br/>'VPN connection dropping'. Confirm? (yes / no)"
+    Employee->>Agent: "yes"
+    Agent->>SI: create_ticket(requested_by=employee_id, category="IT",<br/>short_description="VPN connection dropping", priority="3 - Moderate")
+    SI->>SI_DB: 5-minute duplicate scan, then persist
+    SI_DB-->>SI: {ticket_id: "INC123456", state: "New"}
+    SI-->>Agent: Created
+    Agent-->>Employee: "Incident INC123456 created (IT / Moderate)."
 ```
 
-### **UC-2.1: Cross-System Orchestration - Equipment Procurement**
+### **UC-2.1: Cross-System — Equipment Procurement**
 ```mermaid
 sequenceDiagram
     autonumber
@@ -200,56 +217,93 @@ sequenceDiagram
     participant WW as WorkWeek FastMCP
     participant SI as ServiceImmediately FastMCP
 
-    Employee->>Agent: "Can you verify my remote status and order a home office monitor?"
-    Agent->>RAG: Query Remote Work Policy
-    RAG-->>Agent: Policy Excerpt: Remote employees eligible for home office monitor
+    Employee->>Agent: "Verify my remote status and order a home office monitor."
+    par Independent reads run concurrently (NFR-2.3, §5.7)
+        Agent->>RAG: Query remote-work policy
+        RAG-->>Agent: "Remote employees are eligible for one monitor per 3 years"
+    and
+        Agent->>WW: get_employee_profile(employee_id)
+        WW-->>Agent: {role: "Remote Software Engineer", work_location: "Remote-UK", department: "Engineering"}
+    end
+    Agent->>Agent: Eligibility = policy(remote) AND profile.work_location startswith "Remote"
+    alt Eligible
+        Agent->>WW: get_personal_info(employee_id)
+        WW-->>Agent: {address: "123 Tech Way, London", phone: "+44..."}
+        Agent-->>Employee: "You qualify under the remote-work policy [citation].<br/>Raise a Hardware request shipping to 123 Tech Way? (yes / no)"
+        Employee->>Agent: "yes"
+        Agent->>SI: create_ticket(requested_by=employee_id, category="Hardware",<br/>short_description="Home office monitor request", priority="4 - Low")
+        SI-->>Agent: {ticket_id: "INC-98231", state: "New"}
+        Agent-->>Employee: "Hardware request INC-98231 created."
+    else Not eligible
+        Agent-->>Employee: "The remote-work policy [citation] limits this to remote staff; your record shows on-site. No ticket raised."
+    end
+```
+
+> `get_employee_profile` returns work metadata (role, department, manager, location); `get_personal_info` returns only the home address and phone. Eligibility is decided from the profile, and the personal address is fetched **only after** eligibility passes — a data-minimisation choice, not a stylistic one.
+
+### **UC-2.2: Cross-System — Short-Term Medical Leave**
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Employee
+    participant Agent as ADK Agent / Runtime
+    participant RAG as Vertex AI Search
+    participant WW as WorkWeek FastMCP
+    participant SI as ServiceImmediately FastMCP
+
+    Employee->>Agent: "I need short-term medical leave starting next Monday."
+    par
+        Agent->>RAG: Query short-term medical leave procedure
+        RAG-->>Agent: Procedure + notice requirements [citation]
+    and
+        Agent->>WW: get_employee_balances(employee_id)
+        WW-->>Agent: {sick_remaining: 12.0}
+    end
+    Agent->>Agent: Validate requested 10.0 <= 12.0 sick days (FR-3.3)
+    Note over Agent: Never solicit or store diagnosis text (§4.8, GDPR Art. 9)
+    Agent-->>Employee: "Plan: (1) submit 10.0 days Sick 2026-08-10 to 2026-08-24 in WorkWeek,<br/>(2) raise an HR Access ticket to route your email while away.<br/>Confirm both? (yes / no)"
+    Employee->>Agent: "yes"
+    Agent->>WW: request_time_off(employee_id, "2026-08-10", "2026-08-24", "Sick", 10.0)
+    WW-->>Agent: {request_id: 602}
+    Agent->>SI: create_ticket(requested_by=employee_id, category="HR Access",<br/>short_description="Out-of-office email routing during medical leave", priority="3 - Moderate")
+    alt Both succeed
+        SI-->>Agent: {ticket_id: "INC-98240"}
+        Agent-->>Employee: "Leave 602 submitted; ticket INC-98240 opened. Procedure: [citation]"
+    else Ticket step fails
+        SI-->>Agent: 5xx after 3 retries
+        Agent->>Agent: Emit reference ID + DLQ entry (§5.2, §5.4, NFR-4.3)
+        Agent-->>Employee: "Leave 602 IS submitted. The email-routing ticket failed —<br/>reference LOG-8812. Please contact IT; your leave is unaffected."
+    end
+```
+
+### **UC-2.3: Cross-System — Employee Relocation**
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Employee
+    participant Agent as ADK Agent / Runtime
+    participant RAG as Vertex AI Search
+    participant WW as WorkWeek FastMCP
+    participant SI as ServiceImmediately FastMCP
+
+    Employee->>Agent: "I'm transferring to the London office. Allowance? Update my record and sort building access."
+    Agent->>RAG: Query relocation policy
+    RAG-->>Agent: Allowance figure + badge procedure, with document URI
+    Agent->>Agent: Allowance is quoted verbatim from the retrieved chunk — never inferred
+    Agent-->>Employee: "Relocation allowance per policy: <value from citation> [deep link].<br/>To proceed I need your new London address."
+    Employee->>Agent: "10 Downing St, London"
     Agent->>WW: get_personal_info(employee_id)
-    WW-->>Agent: {address: "123 Tech Way, London", role: "Remote Software Engineer"}
-    Agent->>Agent: Verify Remote Eligibility == True
-    Agent->>SI: create_ticket(requested_by, category="Hardware", short_description="Home Office Monitor Request", priority="4 - Low")
-    SI-->>Agent: {ticket_id: "INC-98231", state: "New"}
-    Agent-->>Employee: "Verified remote status. Hardware request INC-98231 created in ServiceImmediately for shipping to 123 Tech Way."
+    WW-->>Agent: {address: "<current>", phone: "+44 20 7946 0912"}
+    Agent-->>Employee: "Change address to '10 Downing St, London' (phone unchanged)<br/>and raise a Facilities badge ticket for London? Confirm? (yes / no)"
+    Employee->>Agent: "yes"
+    Agent->>WW: update_personal_info(employee_id, address="10 Downing St, London", phone="+44 20 7946 0912")
+    WW-->>Agent: 200 OK
+    Agent->>SI: create_ticket(requested_by=employee_id, category="Facilities",<br/>short_description="London office building access badge", priority="3 - Moderate")
+    SI-->>Agent: {ticket_id: "INC-98255"}
+    Agent-->>Employee: "Address updated and badge ticket INC-98255 created."
 ```
 
-### **UC-2.2: Cross-System Orchestration - Short-Term Medical Leave**
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Employee
-    participant Agent as ADK Agent / Runtime
-    participant RAG as Vertex AI Search
-    participant WW as WorkWeek FastMCP
-    participant SI as ServiceImmediately FastMCP
-
-    Employee->>Agent: "I need to take short-term medical leave starting next Monday."
-    Agent->>RAG: Query Short-Term Medical Leave Policy
-    RAG-->>Agent: Medical Leave Procedure & Requirements
-    Agent->>WW: request_time_off(employee_id, "2026-08-10", "2026-08-24", "Sick", 10)
-    WW-->>Agent: TimeOff Request Confirmed (ID: 602)
-    Agent->>SI: create_ticket(requested_by, category="HR Access", short_description="Medical Leave Email Out-Of-Office Routing", priority="3 - Moderate")
-    SI-->>Agent: Ticket Created (ID: INC-98240)
-    Agent-->>Employee: "Quoted Medical Leave policy. Leave submitted in WorkWeek (ID 602) and IT access ticket INC-98240 opened."
-```
-
-### **UC-2.3: Cross-System Orchestration - Employee Relocation**
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Employee
-    participant Agent as ADK Agent / Runtime
-    participant RAG as Vertex AI Search
-    participant WW as WorkWeek FastMCP
-    participant SI as ServiceImmediately FastMCP
-
-    Employee->>Agent: "I'm transferring to the London office. Tell me allowance, update record, and sort building access."
-    Agent->>RAG: Query Relocation Policy
-    RAG-->>Agent: Policy Excerpt: Relocation allowance limits and badge requirements
-    Agent->>WW: update_personal_info(employee_id, address="10 Downing St, London", phone="+442079460912")
-    WW-->>Agent: Contact Details Updated
-    Agent->>SI: create_ticket(requested_by, category="Facilities", short_description="London Office Building Access Badge", priority="3 - Moderate")
-    SI-->>Agent: Ticket Created (ID: INC-98255)
-    Agent-->>Employee: "Relocation allowance quoted ($5,000 max). Address updated in WorkWeek and building badge ticket INC-98255 created."
-```
+> **The allowance figure is never generated.** `update_personal_info` requires both `address` and `phone` (`ProfileUpdateRequest.required = [address, phone]`), so the agent must read the current phone first and echo it in the confirmation — otherwise a relocation would silently blank the employee's phone number.
 
 ## **3.3. Entity Relationship Diagram (ERD) & Data Models**
 
@@ -271,8 +325,9 @@ erDiagram
     CONVERSATION_TURN {
         string turn_id PK
         string session_id FK
-        string user_prompt_masked
-        string agent_response
+        string user_prompt_masked "SPII-redacted by Model Armor"
+        string agent_response_masked "SPII-redacted before persistence"
+        string capability "policy | workweek | serviceimmediately | mixed"
         float turn_latency_ms
         timestamp timestamp
     }
@@ -377,35 +432,77 @@ sequenceDiagram
 # **4\. Security, Governance & Identity**
 
 ## **4.1. Authentication Boundaries**
-In production, backend services bypass IAP and require a custom **Personal Access Token (PAT)** header to satisfy Google Frontend (GFE) proxy requirements:
+Backend services sit behind Google Frontend (GFE) and bypass IAP, so they require a custom **service Personal Access Token** header:
 ```http
-X-MCP-Token: mcp_your_token_here
+X-MCP-Token: <service PAT, resolved from Secret Manager at runtime>
 ```
 
-ADK agents configure connection parameters statelessly using custom HTTP headers with environment-scoped Service PATs, while passing user `employee_id` context into tool invocations for tenant isolation (`FR-3.1`):
+There are **two distinct identities per request**, and conflating them is the most common way this design gets implemented insecurely:
+
+| Identity | Carried by | Answers | Source |
+| :--- | :--- | :--- | :--- |
+| **Automation identity** | `X-MCP-Token` header | "Is this call from the approved assistant?" (`FR-1.2`, `FR-4.1`) | Secret Manager, one PAT per environment |
+| **User identity** | `employee_id` in the tool arguments | "Whose data may this call touch?" (`FR-1.5`, `FR-3.1`) | Derived server-side from the IAP assertion (§3.6) — **never** from the model, the prompt, or the browser |
+
+> **Security rule.** The `employee_id` argument is injected by the runtime from session state immediately before the tool executes. If the model emits an `employee_id` that differs from the session's, the call is refused and `governance.identity_mismatch` is logged. A language model must never be trusted to carry an authorization subject.
+
+### **4.1.1. Reference wiring**
 ```python
-from google.adk.agents import Agent
+import os
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.cloud import secretmanager
+
+def _secret(name: str) -> str:
+    """Resolve a secret at process start. Never commit, never log the value."""
+    client = secretmanager.SecretManagerServiceClient()
+    path = f"projects/{os.environ['PROJECT_ID']}/secrets/{name}/versions/latest"
+    return client.access_secret_version(name=path).payload.data.decode()
+
+MCP_TOKEN = _secret("mcp-service-pat")           # rotated per §4.1.2
 
 workweek_mcp = McpToolset(
     connection_params=StreamableHTTPConnectionParams(
-        url="https://mock-saas.aishprabhat.demo.altostrat.com/work-week/mcp/",
-        headers={"X-MCP-Token": "mcp_your_token_here"}
+        url=os.environ["WORKWEEK_MCP_URL"],      # env-scoped, see §7.4
+        headers={"X-MCP-Token": MCP_TOKEN},
     )
 )
 
 serviceimmediately_mcp = McpToolset(
     connection_params=StreamableHTTPConnectionParams(
-        url="https://mock-saas.aishprabhat.demo.altostrat.com/service-immediately/mcp/",
-        headers={"X-MCP-Token": "mcp_your_token_here"}
+        url=os.environ["SERVICEIMMEDIATELY_MCP_URL"],
+        headers={"X-MCP-Token": MCP_TOKEN},
     )
 )
 ```
 
+* **No literals.** Endpoint URLs and tokens are environment-injected. The demo host `mock-saas.<tenant>.demo.altostrat.com` is the **MVP-1 mock target only** and must never appear in a committed file or in a non-dev environment (`C-3`).
+* **Least privilege**: the Agent Runtime service account holds `roles/secretmanager.secretAccessor` on `mcp-service-pat` and nothing else.
+* **CI guard**: pre-commit and CI reject any string matching `mcp_[A-Za-z0-9]{8,}` or the demo hostname (§7.2 stage 1).
+
+### **4.1.2. Token Rotation & Revocation**
+| Property | Value |
+| :--- | :--- |
+| Rotation period | 90 days, automated via Secret Manager rotation + `POST /api/mcp-tokens` |
+| Overlap window | Old and new token both valid for 24 h, so rotation never depends on deploy ordering |
+| Revocation | `DELETE /api/mcp-tokens/{token_id}` (present in `enterprise_services_openapi.json`) |
+| Blast radius | The PAT authenticates the *automation*, not a user. Compromise permits impersonating the assistant, but every call still carries an `employee_id` that the backend authorises independently (§4.2), so it does not by itself grant access to another employee's data. |
+
 ## **4.2. Tenant Isolation & Real-Time Data Fetch Rules**
 * **Identity Context Verification (`FR-1.5`)**: Every FastMCP resource query (`workweek://employees/{employee_id}/profile`) and tool call (`get_employee_balances`) verifies caller identity against the authenticated session context. Cross-user access returns `403 Forbidden`.
-* **Zero Dynamic Caching (`FR-3.4`)**: The AI orchestration layer fetches Employee Profile metadata and PTO balances directly from WorkWeek on **every query**. No dynamic, user-specific profile data is cached in the agent memory layer.
+* **Zero Dynamic Caching (`FR-3.4`)**: The orchestration layer fetches Employee Profile metadata and PTO balances directly from WorkWeek on **every query**. No dynamic, user-specific value is ever read back out of session state to answer a later question.
+
+### **4.2.1. What "no caching" means precisely (`FR-3.4` vs §3.4 session retention)**
+There is an apparent conflict between `FR-3.4` (cache nothing) and §3.4 (retain conversation history for 24 h). It is resolved by distinguishing **authoritative reads** from **transcript**:
+
+| Data | Held in session? | Rule |
+| :--- | :--- | :--- |
+| PTO balance, profile fields, ticket state | **Never** as a variable the agent may reuse | Every question that depends on a live value triggers a fresh tool call, even if the same value was fetched one turn earlier |
+| The rendered assistant reply (which may quote a balance) | Yes, as immutable transcript | Transcript is display history, **not** a data source. The agent is instructed never to answer "what is my balance" from prior turns. |
+| Pending-mutation payload hash (§3.5) | Yes, ≤ 5 min | Not employee data; a nonce over arguments the user already saw |
+| `employee_id` | Yes, for the session lifetime | The authorization subject, bound at session creation from the IAP assertion |
+
+**Verification** (§9): issue the same balance question twice in one session and assert **two** backend calls in the tool-invocation log. A single call is a defect.
 
 ## **4.3. Safety Interceptor Pipeline & Guardrails**
 
@@ -530,8 +627,9 @@ allowed_toolsets:
   - id: workweek
     kind: mcp_streamable_http
     url: ${WORKWEEK_MCP_URL}
-    allowed_tools: [get_current_employee_id, get_employee_balances, request_time_off,
-                    update_personal_info, get_personal_info, cancel_leave_request]
+    allowed_tools: [get_current_employee_id, get_employee_profile, get_employee_balances,
+                    request_time_off, update_personal_info, get_personal_info,
+                    cancel_leave_request]
   - id: service_immediately
     kind: mcp_streamable_http
     url: ${SERVICEIMMEDIATELY_MCP_URL}
@@ -578,7 +676,8 @@ The agent is constructed **only** from toolsets present in the manifest. A `befo
 
 | Tool Name | Parameters | Description & Validation Rules |
 | :--- | :--- | :--- |
-| `get_current_employee_id()` | None | Resolves the authenticated user's `employee_id`. |
+| `get_current_employee_id()` | None | Resolves the authenticated caller's `employee_id`. **Advisory only** — the runtime still injects the session-bound `employee_id` into every other call (§4.1). |
+| `get_employee_profile` | `employee_id: str` | Work metadata: name, email, department, role, manager, hire date, work location (`FR-3.2`). Backs `GET /work-week/api/employees/{employee_id}/profile`. Drives eligibility decisions (`UC-2.1`). |
 | `get_employee_balances` | `employee_id: str` | Returns accrued, used, and remaining Vacation/Sick leave balances (`FR-3.2`). Real-time fetch (`FR-3.4`). |
 | `request_time_off` | `employee_id: str`, `start_date: str`, `end_date: str`, `leave_type: str`, `days: float` | Books time off. Dates must be `YYYY-MM-DD`. Validates $start \le end$, start $\ge$ today, and $days \le remaining\_balance$ (`FR-3.3`). |
 | `update_personal_info` | `employee_id: str`, `address: str`, `phone: str` | Updates home address ($\ge 5$ chars) and phone number (regex `^\+?[\d\s\-()]{7,20}$`) (`FR-3.2`, `FR-3.3`). |
@@ -622,12 +721,15 @@ Rejected transitions return `409 Conflict` with `error_code = INVALID_STATE_TRAN
 ## **5.3. FastMCP Rate Limiting, Throttling & Retry Backoff Configurations**
 
 ### **Throttling Thresholds**
-* **WorkWeek FastMCP Server**:
-  * System-wide peak limit: $50\text{ req/sec}$.
-  * User-level limit: $200\text{ req/min}$ per `employee_id`.
-* **ServiceImmediately FastMCP Server**:
-  * System-wide peak limit: $30\text{ req/sec}$.
-  * User-level limit: $100\text{ req/min}$ per `employee_id`.
+Limits are derived from `A-5` (10,000 MAU, 90k turns/month, peak ≈ 6× mean ⇒ ≈ 1.2 req/s mean, ≈ 7 req/s peak across all users) with roughly 7× headroom, and from what a **single human** can plausibly generate.
+
+| Scope | WorkWeek | ServiceImmediately | Rationale |
+| :--- | :---: | :---: | :--- |
+| System-wide peak | 50 req/s | 30 req/s | ≈ 7× the modelled peak; protects the backend, not the user |
+| **Per `employee_id`** | **20 req/min** | **10 req/min** | A conversational turn issues at most 3–4 tool calls. 20/min tolerates a fast multi-turn user with retries and still stops a runaway loop within seconds. |
+| Per `employee_id`, mutating tools only | 5 req/min | 5 req/min | Bounds damage from an injection that survives §3.5, and from an agent retry bug |
+
+> The previous limits (200 and 100 req/min per user) were above any achievable human rate and therefore constrained nothing. The binding control against a runaway agent is the mutating-tool sub-limit.
 
 ### **Client-Side Token Bucket & Backoff Formula**
 ADK agent HTTP callers enforce client-side rate limiting using the Token Bucket algorithm. When encountering a `429 Too Many Requests` or transient `5xx` error, requests retry using **Exponential Backoff with Full Jitter**:
