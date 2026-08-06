@@ -11,8 +11,11 @@ load_dotenv(_root_dir / ".env")
 
 APP_NAME: str = os.getenv("APP_NAME", "elevate-hr-agent")
 
-# Model configuration: latest-generation gemini-3.5-flash
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+# The default has to be a model the project can actually serve. gemini-3.5-flash
+# is not available on Vertex in us-central1 and every turn failed with a 404
+# from the publisher endpoint; the failure only surfaced after deployment,
+# because the model name is resolved when the agent runs, not when it is built.
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # FastMCP Server Endpoints
 WORKWEEK_MCP_URL: str = os.getenv(

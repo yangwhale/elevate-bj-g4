@@ -17,6 +17,7 @@ simple: it is a stand-in for retrieval, not a search engine.
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
@@ -29,7 +30,9 @@ STOP_WORDS = {
     "much", "many", "get", "have", "there", "any", "if", "when", "will",
 }
 
-CORPUS_URI = "gs://${PROJECT_ID}-hr-policies"
+CORPUS_URI = os.environ.get(
+    "POLICY_CORPUS_URI", "gs://${PROJECT_ID}-hr-policies"
+)
 MAX_RESULTS = 3
 EXCERPT_CHARS = 900
 
@@ -68,6 +71,84 @@ def _strip_front_matter(body: str) -> str:
     return body
 
 
+
+def _vertex_search(query: str) -> dict[str, Any] | None:
+    """Query the Vertex AI Search datastore, or return None if unavailable.
+
+    Production retrieval (SDD.md C.2). Returns None on any failure — missing
+    configuration, missing client library, an unbuilt index — so the caller
+    falls back to reading the same corpus off disk. Silence here would be a
+    correctness bug, so the fallback logs which path served the answer in the
+    `retrieval` field of the result.
+    """
+    project = config.GOOGLE_CLOUD_PROJECT
+    engine = config.VERTEX_AI_SEARCH_ENGINE_ID
+    if not project or not engine:
+        return None
+    try:
+        from google.cloud import discoveryengine_v1 as de
+    except ImportError:
+        return None
+
+    serving_config = (
+        f"projects/{project}/locations/{config.VERTEX_AI_SEARCH_LOCATION}"
+        f"/collections/default_collection/engines/{engine}"
+        f"/servingConfigs/default_search"
+    )
+    try:
+        client = de.SearchServiceClient()
+        response = client.search(
+            de.SearchRequest(
+                serving_config=serving_config,
+                query=query,
+                page_size=MAX_RESULTS,
+                content_search_spec=de.SearchRequest.ContentSearchSpec(
+                    extractive_content_spec=de.SearchRequest.ContentSearchSpec
+                    .ExtractiveContentSpec(max_extractive_segment_count=2),
+                ),
+            )
+        )
+    except Exception:
+        return None
+
+    results = []
+    for item in response.results:
+        data = dict(item.document.derived_struct_data or {})
+        uri = data.get("link") or ""
+        if not uri:
+            continue
+        # Vertex AI Search rejects text/markdown, so the index reads a .txt
+        # mirror of the corpus. Citations must point at the .md the corpus
+        # actually publishes, or every citation resolves to nothing.
+        if uri.endswith(".txt"):
+            uri = uri[: -len(".txt")] + ".md"
+        uri = uri.replace("-elevate-hr-policies-txt/", "-elevate-hr-policies/")
+        segments = data.get("extractive_segments") or []
+        excerpt = " ".join(
+            (s.get("content") or "") for s in segments
+        ).strip() or (data.get("snippets") or [{}])[0].get("snippet", "")
+        results.append({
+            "title": uri.rsplit("/", 1)[-1].removesuffix(".md").replace("-", " "),
+            "document": uri.split("/", 3)[-1] if uri.startswith("gs://") else uri,
+            "uri": uri,
+            "citation": f"Source: {uri}",
+            "excerpt": excerpt[:EXCERPT_CHARS],
+        })
+    if not results:
+        return None
+    return {
+        "status": "success",
+        "query": query,
+        "results_count": len(results),
+        "results": results,
+        "retrieval": "vertex_ai_search",
+        "grounding_instruction": (
+            "State only facts that appear in these excerpts, and end the answer "
+            "with the Source line of every document you used."
+        ),
+    }
+
+
 def vertex_search_policies(query: str) -> dict[str, Any]:
     """Search the approved HR policy corpus and return grounded excerpts.
 
@@ -79,6 +160,10 @@ def vertex_search_policies(query: str) -> dict[str, Any]:
         query: Natural-language policy question, for example
             'how much bereavement leave' or 'medical certificate deadline'.
     """
+    hosted = _vertex_search(query)
+    if hosted is not None:
+        return hosted
+
     tokens = [
         t.lower()
         for t in re.findall(r"\b[a-zA-Z0-9_-]+\b", query)
@@ -164,6 +249,7 @@ def vertex_search_policies(query: str) -> dict[str, Any]:
         "query": query,
         "results_count": len(results),
         "results": results,
+        "retrieval": "local_corpus",
         "unmatched_terms": sorted(absent),
         "grounding_instruction": instruction,
     }
