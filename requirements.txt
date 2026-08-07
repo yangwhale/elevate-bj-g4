@@ -1,0 +1,25 @@
+# Runtime dependencies for the Cloud Run / Agent Engine container.
+#
+# ADK's deploy path reads this file, not pyproject.toml. Two of the entries
+# below exist because their absence fails the deploy in a way that names
+# neither the package nor the flag: the container exits with
+# ModuleNotFoundError before binding the port, and Cloud Run reports a
+# health-check timeout.
+google-adk
+google-genai
+pydantic>=2.0.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+pyyaml>=6.0.0
+
+# Retrieval against the deployed Vertex AI Search datastore.
+google-cloud-discoveryengine>=0.13.0
+
+# Required by --trace_to_cloud. Both are needed: the OTLP exporter, and the
+# GCP-specific Cloud Trace exporter that ADK imports as
+# opentelemetry.exporter.cloud_trace. Missing either one fails the deploy on a
+# health-check timeout rather than on a message naming the package.
+opentelemetry-exporter-otlp>=1.25.0
+opentelemetry-exporter-gcp-trace>=1.7.0
+opentelemetry-resourcedetector-gcp>=1.7.0a0
+google-cloud-logging>=3.10.0

@@ -11,6 +11,13 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.0",
     "pytest>=8.0.0",
+    # Retrieval against the deployed Vertex AI Search datastore.
+    "google-cloud-discoveryengine>=0.13.0",
+    # Required by --trace_to_cloud. Without it the Cloud Run container exits
+    # with ModuleNotFoundError before binding the port, and the deploy fails
+    # on a health-check timeout that names neither the module nor the flag.
+    "opentelemetry-exporter-otlp>=1.25.0",
+    "google-cloud-logging>=3.10.0",
 ]
 
 [project.optional-dependencies]

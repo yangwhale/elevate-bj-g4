@@ -26,6 +26,9 @@ echo "== Discovery Engine data store"
 curl -s -X DELETE -H "Authorization: Bearer $(TOKEN)" -H "x-goog-user-project: ${PROJECT}" \
   "https://discoveryengine.googleapis.com/v1/projects/${PROJECT}/locations/global/collections/default_collection/dataStores/${DS_ID}" >/dev/null
 
+gcloud run services delete elevate-hr-ui --region="${REGION}" --project="${PROJECT}" --quiet 2>/dev/null || echo "  (cloud run service already gone)"
+gcloud artifacts repositories delete cloud-run-source-deploy --location="${REGION}" --project="${PROJECT}" --quiet 2>/dev/null || echo "  (artifact repo already gone)"
+
 echo "== GCS bucket ${BUCKET}"
 gcloud storage rm -r "${BUCKET}" --project="${PROJECT}" 2>/dev/null || echo "  (already gone)"
 

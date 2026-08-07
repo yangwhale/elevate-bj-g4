@@ -16,6 +16,8 @@ guessing. Append a row when you create something; do not rely on memory.
 | 4 | GCS staging bucket for Agent Engine packaging | `gs://chris-pgp-host-elevate-staging` | us-central1 | 2026-08-07 00:05 HKT | — |
 | 5 | Agent Engine instance | `elevate-hr-agent` = `projects/688858276789/locations/us-central1/reasoningEngines/1100014654345707520` | us-central1 | 2026-08-07 00:06 HKT | — |
 | 6 | GCS bucket, `.txt` mirror of the corpus. Vertex AI Search rejects `text/markdown`, so the index reads this copy while citations keep the `.md` path | `gs://chris-pgp-host-elevate-hr-policies-txt` (187 objects) | us-central1 | 2026-08-07 01:05 HKT | — |
+| 7 | Artifact Registry repo for Cloud Run source builds | `cloud-run-source-deploy` | us-central1 | 2026-08-07 14:52 HKT | — |
+| 8 | Cloud Run service, ADK web UI over the agent. **Public — `allUsers` has `run.invoker`**, and the container holds the backend token, so anyone with the URL can act as EMP-246 against the mock HR service | `elevate-hr-ui` → https://elevate-hr-ui-b5lltzdmxq-uc.a.run.app | us-central1 | 2026-08-07 16:45 HKT | — |
 
 Run `deploy/teardown.sh` to remove everything still live.
 
@@ -29,6 +31,23 @@ Run `deploy/teardown.sh` to remove everything still live.
   fails the update with 400 FailedPrecondition.
 * Nothing here holds customer data. The corpus is a synthetic handbook and the
   HCM/ITSM backends are in-process mocks.
+
+## Access note
+
+The Cloud Run UI is deliberately public so it can be opened from a link. The
+container carries `MCP_TOKEN` as an environment variable, so anyone who has the
+URL can read and write EMP-246's records in the mock HR service. That is
+acceptable for a shared test backend and would not be for anything else. To
+close it:
+
+```bash
+gcloud run services remove-iam-policy-binding elevate-hr-ui \
+  --region=us-central1 --project=chris-pgp-host \
+  --member=allUsers --role=roles/run.invoker
+```
+
+A production deployment puts the token in Secret Manager and the service behind
+IAP; neither is done here.
 
 ## Cost shape
 
