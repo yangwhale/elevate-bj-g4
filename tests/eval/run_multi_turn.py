@@ -114,11 +114,39 @@ async def run_case(case: dict) -> dict:
     # `agents` is a mapping keyed by agent id, not a list. A list is valid JSON
     # and fails schema validation with a message naming the field but not the
     # file, so it is worth getting right here.
-    trace["agent_data"] = {
-        "agents": {AGENT_ID: {"agent_id": AGENT_ID, "agent_type": "LlmAgent"}},
-        "turns": turns,
-    }
+    trace["agent_data"] = {"agents": _agent_definition(), "turns": turns}
     return trace
+
+
+def _agent_definition() -> dict:
+    """Describe the agent, including its tool declarations.
+
+    Without the declarations the trajectory judge sees tool calls it cannot
+    match to any defined tool and scores the case zero for "hallucinated
+    tools". That is the harness failing to describe the agent, not the agent
+    inventing capabilities, and it cost four cases a zero before it was found.
+    """
+    declarations = []
+    for tool in root_agent.tools:
+        fn = getattr(tool, "__name__", None) or getattr(tool, "name", None)
+        if not fn:
+            continue
+        declarations.append({
+            "function_declarations": [{
+                "name": fn,
+                "description": (getattr(tool, "__doc__", "") or "").strip(),
+            }]
+        })
+    return {
+        AGENT_ID: {
+            "agent_id": AGENT_ID,
+            "agent_type": "LlmAgent",
+            "description": root_agent.description,
+            "instruction": root_agent.instruction,
+            "tools": declarations,
+            "sub_agents": [],
+        }
+    }
 
 
 async def main_async(args) -> int:
