@@ -1,34 +1,101 @@
-# Project Elevate - HR Agentic Solution (MVP 1)
+# Project Elevate — HR & IT assistant
 
-**Project Elevate** is a secure, enterprise-grade AI virtual assistant designed to automate Tier 1 HR/IT inquiries and facilitate conversational self-service transactions across core enterprise platforms.
+An agent that answers HR policy questions from an approved corpus, and carries
+out leave and IT-ticket transactions in WorkWeek and ServiceImmediately.
 
-## 📚 Core Documentation & Specifications
+**Status: deployed, not shippable.** Four absolute safety gates pass; two
+quality gates do not. Numbers in
+[`tests/eval/evaluation_report.md`](tests/eval/evaluation_report.md).
 
-* **[`BRD.md`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/BRD.md)**: Business Requirements Document detailing project scope, Tier 1 deflection targets, functional requirements, and use cases (UC-1.1 through UC-2.3).
-* **[`SDD.md`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/SDD.md)**: Solution Design Document covering system architecture, sequence diagrams, safety guardrails, error handling, and deployment roadmap.
-* **[`enterprise_services_openapi.json`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/enterprise_services_openapi.json)**: OpenAPI 3.1 specification for standard REST endpoints and mounted FastMCP servers (`/work-week/mcp/` and `/service-immediately/mcp/`).
-* **[`tests/eval/evaluation_report.md`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/tests/eval/evaluation_report.md)**: Evaluation & Quality Benchmark Report detailing evaluation approach, metrics, dataset schemas, and developer runbooks.
+| | |
+| :--- | :--- |
+| Agent | Google ADK, `gemini-2.5-flash`, 13 tools |
+| Runtime | Vertex AI Agent Engine, `us-central1` |
+| Retrieval | Vertex AI Search over 187 handbook sections, `global` |
+| Backends | WorkWeek HCM and ServiceImmediately ITSM, live over MCP |
+| UI | Cloud Run, ADK web |
 
-## 🛠️ Key Architectural Components
+---
 
-1. **Agent Orchestration**: Built with the **Google ADK (Agent Development Kit)** running on **Agent Platform Agent Runtime**, utilizing **Agent Runtime Session Service** for multi-turn state management.
-2. **Enterprise System Tooling via FastMCP**:
-   * **WorkWeek (HCM)**: Employee profile metadata, leave balance retrieval (`get_employee_balances`), time-off booking (`request_time_off`), and personal contact updates (`update_personal_info`).
-   * **ServiceImmediately (ITSM)**: Incident ticket queries (`list_tickets`), incident creation (`create_ticket`), timeline comments, and status transitions (`update_ticket_status`).
-3. **Safety & Governance**: Integrated with **Google Cloud Model Armor** for real-time prompt injection interception, jailbreak defense, toxicity filtering, and SPII redaction.
-4. **Policy Knowledge Base (RAG)**: Powered by **Vertex AI Search / Agent Builder** to deliver grounded answers derived from HR policy documents with clickable deep-link citations.
+## Documents
 
-## 🧪 Evaluation Suite (`agents-cli` Format)
-Evaluation assets conform to the [`agents-cli`](https://github.com/google/agents-cli) standard located in `tests/eval/`:
-* **[`eval_config.yaml`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/tests/eval/eval_config.yaml)**: Configuration for built-in Agent Platform metrics and custom evaluators (`policy_citation_integrity`, `cross_system_orchestration_integrity`, `spii_leakage_detector`).
-* **[`datasets/eval-data.json`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/tests/eval/datasets/eval-data.json)**: Single-turn benchmark for Policy Q&A (`UC-1.1`), WorkWeek queries (`UC-1.2`), ServiceImmediately queries (`UC-1.3`), prompt injection defense, and input validation.
-* **[`datasets/eval-multi-turn.json`](file:///usr/local/google/home/levichen/Documents/brd2sdd/elevate-bj-g4/tests/eval/datasets/eval-multi-turn.json)**: Multi-turn conversational trajectories and cross-system orchestration (`UC-2.1` Equipment, `UC-2.2` Medical Leave, `UC-2.3` Relocation).
+| File | What it is |
+| :--- | :--- |
+| [`BRD.md`](BRD.md) | The original requirements. Not modified. |
+| [`SDD.md`](SDD.md) | Solution design, v1.14. Architecture, sequence flows, guardrails, cost model, and the evaluation contract. |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | How to stand this up from zero, including the failures each step produced the first time. |
+| [`docs/BACKEND_CONTRACT.md`](docs/BACKEND_CONTRACT.md) | What the real enterprise service actually does — three differences from the OpenAPI spec, and one place it contradicts `FR-4.3`. |
+| [`docs/LESSONS.md`](docs/LESSONS.md) | Twelve things this build taught us, each with the rule it produced. |
+| [`deploy/PROVISIONED.md`](deploy/PROVISIONED.md) | Every cloud resource created, with identifiers and creation times. `deploy/teardown.sh` removes them. |
+| [`tests/eval/evaluation_report.md`](tests/eval/evaluation_report.md) | Evaluation design, results, and the defects the run found. |
 
-```bash
-# Run evaluations locally using agents-cli
-agents-cli eval grade --traces tests/eval/datasets/eval-multi-turn.json --config tests/eval/eval_config.yaml
+---
+
+## Layout
+
+```
+agent/
+  agent.py              root agent, before/after callbacks
+  prompt.py             the operating rules, in priority order — identity first
+  guardrails.py         injection patterns, SPII redaction, RBAC check
+  session.py            session service
+  tools/
+    mcp_client.py       client for the live WorkWeek / ServiceImmediately MCP
+    workweek_tool.py    leave and profile; remote when a token is set, mock otherwise
+    serviceimmediately_tool.py   tickets, with the FR-4.3 state machine enforced here
+    rag_tool.py         Vertex AI Search, falling back to the corpus on disk
+    clock_tool.py       today's date, so relative dates resolve to the right year
+knowledge/              the approved corpus, 187 sections. The only source of policy fact.
+tests/
+  test_agent.py         42 unit tests, always against the in-process mocks
+  eval/
+    build_datasets.py   generator — verifies every citation before writing
+    run_cases.py        drives cases in-process with the real caller identity
+    eval_config.yaml    4 built-in metrics + 3 local ones
+    test_metrics.py     16 tests for the metrics themselves
+deploy/                 deployment script, resource register, teardown
+terraform/              infrastructure for the surrounding services
 ```
 
-## 🔒 Security & Authentication
-* FastMCP server calls authenticate via custom `X-MCP-Token` headers.
-* User identity context (`employee_id`) is strictly validated per request turn to enforce single-tenant isolation rules.
+---
+
+## Running it
+
+```bash
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+
+# unit tests — never touch the network
+pytest tests/ -q
+
+# regenerate the evaluation datasets from the corpus
+python3 tests/eval/build_datasets.py
+
+# run the cases, then grade
+python3 tests/eval/run_cases.py --dataset tests/eval/datasets/eval-data.json \
+                               --out artifacts/traces/single.json
+agents-cli eval grade --traces artifacts/traces/single.json \
+                      --config tests/eval/eval_config.yaml \
+                      --output artifacts/results/single
+```
+
+Grade three times and take the mean. A single run of an LLM judge is not a
+result — measured spread is 0.006–0.018 on the 52-case suite and 0.043–0.097 on
+the 8-case one.
+
+---
+
+## Things worth knowing before you change anything
+
+* **The prompt is an ordered list.** A procedural rule inserted above a safety
+  rule can suppress it. Inserting anything near the top means re-running the
+  security cases.
+* **Unit tests must never reach the live service.** `ELEVATE_FORCE_MOCK=1` is
+  set in `tests/conftest.py`. Before that existed, one run wrote test data into
+  a real employee record.
+* **Datasets are generated, not edited.** Hand-editing a dataset reintroduces
+  the failure the generator exists to prevent: an expected answer no document
+  supports.
+* **Identity comes from the backend token**, not from configuration. The
+  datasets resolve the caller at generation time for the same reason.
+* **The retrieval tool holds no facts.** An earlier version had a hardcoded
+  policy catalog that contradicted the handbook and won every lookup.
