@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive multi-turn evaluation cases and emit traces for `agents-cli eval grade`.
+"""Drive evaluation cases and emit traces for `agents-cli eval grade`.
 
 Two reasons this exists rather than `agents-cli eval generate`:
 
@@ -70,8 +70,15 @@ async def run_case(case: dict) -> dict:
     await session_service.create_session(
         app_name=config.APP_NAME, user_id=user, session_id=session_id)
 
+    # Single-turn cases carry `prompt`; multi-turn cases carry `conversation`.
+    # Both are driven the same way, which is also how the suite escapes
+    # `agents-cli eval generate` sending its own `eval-cli-user` as the user
+    # id — an id the mock HCM does not know, which turned five transaction
+    # cases into "employee not found" and scored the harness, not the agent.
+    conversation = case.get("conversation") or [case["prompt"]]
+
     turns = []
-    for index, message in enumerate(case["conversation"]):
+    for index, message in enumerate(conversation):
         text = "".join(p.get("text", "") for p in message.get("parts", []))
         safe, sanitized, _ = ModelArmorGuard.inspect_input(text)
         events = [{"author": "user",
@@ -107,10 +114,10 @@ async def run_case(case: dict) -> dict:
             final = [{"text": text}]
             break
 
-    trace = {k: case[k] for k in ("eval_case_id", "tags", "rubric_groups") if k in case}
-    trace["prompt"] = case["conversation"][0]
+    trace = {k: case[k] for k in ("eval_case_id", "tags", "rubric_groups", "reference") if k in case}
+    trace["prompt"] = conversation[0]
     trace["responses"] = [{"response": {"role": "model", "parts": final}}]
-    trace["reference"] = {"response": {"role": "model", "parts": [{"text": ""}]}}
+    trace.setdefault("reference", {"response": {"role": "model", "parts": [{"text": ""}]}})
     # `agents` is a mapping keyed by agent id, not a list. A list is valid JSON
     # and fails schema validation with a message naming the field but not the
     # file, so it is worth getting right here.
