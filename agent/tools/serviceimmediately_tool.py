@@ -7,10 +7,13 @@ Conforms to:
 """
 
 import datetime
+import json
 from typing import Any
 
 from .. import config
 from ..guardrails import ModelArmorGuard
+from . import mcp_client
+from .workweek_tool import _remote
 
 
 # =============================================================================
@@ -79,6 +82,17 @@ def reset_state_for_testing() -> None:
     _store = ServiceImmediatelyStateStore()
 
 
+def effective_caller(requested: str | None = None) -> str:
+    """The employee id to send to the backend.
+
+    In remote mode identity comes from the token; anything else is refused by
+    the service. In mock mode it comes from the session.
+    """
+    if mcp_client.enabled():
+        return mcp_client.whoami_or(_store.current_caller_id)
+    return requested or _store.current_caller_id
+
+
 def set_active_caller_context(employee_id: str):
     """Sets active caller context for multi-tenant sessions."""
     _store.current_caller_id = employee_id
@@ -93,6 +107,9 @@ def list_tickets(employee_id: str | None = None) -> dict[str, Any]:
     Args:
         employee_id: Employee ID (e.g. 'EMP-1002'). If omitted, defaults to active session caller.
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.ITSM, "list_tickets",
+                       {"employee_id": effective_caller(employee_id)})
     target_id = employee_id or _store.current_caller_id
 
     allowed, rbac_msg = ModelArmorGuard.check_rbac_isolation(
@@ -128,6 +145,9 @@ def get_ticket_details(ticket_id: str) -> dict[str, Any]:
     Args:
         ticket_id: Incident Ticket ID (e.g. 'INC123456')
     """
+    if mcp_client.enabled():
+        # The service exposes no per-ticket read; filter the caller's list.
+        return _remote_ticket_details(ticket_id)
     ticket = _store.get_ticket(ticket_id)
     if not ticket:
         return {
@@ -181,6 +201,10 @@ def create_ticket(
         priority: Priority ('1 - Critical', '2 - High', '3 - Moderate', '4 - Low')
         assignment_group: Target support desk group (e.g. 'Service Desk', 'Facilities')
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.ITSM, "create_ticket",
+                       {"requested_by": effective_caller(requested_by), "category": category,
+                        "short_description": short_description, "priority": priority})
     # 1. RBAC Check
     allowed, rbac_msg = ModelArmorGuard.check_rbac_isolation(
         _store.current_caller_id, requested_by
@@ -266,6 +290,9 @@ def add_ticket_comment(
         author: Author employee ID or name
         comment: Note text to append
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.ITSM, "add_ticket_comment",
+                       {"ticket_id": ticket_id, "author": author, "comment": comment})
     ticket = _store.get_ticket(ticket_id)
     if not ticket:
         return {"status": "error", "error_code": "TICKET_NOT_FOUND", "message": f"Ticket {ticket_id} not found."}
@@ -310,6 +337,8 @@ def update_ticket_status(
         resolution_notes: Required when resolving or closing
         updated_by: User or system driving transition
     """
+    if mcp_client.enabled():
+        return _remote_status(ticket_id, status)
     ticket = _store.get_ticket(ticket_id)
     if not ticket:
         return {"status": "error", "error_code": "TICKET_NOT_FOUND", "message": f"Ticket {ticket_id} not found."}
@@ -366,3 +395,70 @@ def update_ticket_status(
         "new_state": norm_target,
         "message": f"Ticket {ticket_id} status transitioned from '{current_state}' to '{norm_target}'.",
     }
+
+
+# ---------------------------------------------------------------- remote path
+_REMOTE_TRANSITIONS = {
+    "New": ["In Progress", "Resolved"],
+    "In Progress": ["Resolved", "Closed"],
+    "Resolved": ["In Progress", "Closed"],
+    "Closed": [],
+}
+
+
+def _remote_ticket_details(ticket_id: str) -> dict[str, Any]:
+    """The backend has no per-ticket read, so filter the caller's own list.
+
+    Doing it here rather than asking the model to filter keeps the tenant
+    boundary on the service side: list_tickets already refuses another
+    employee's id, so a ticket that is not in the caller's list is reported as
+    not found rather than fetched by some other route.
+    """
+    listed = _remote(mcp_client.ITSM, "list_tickets",
+                     {"employee_id": effective_caller()})
+    if listed.get("status") != "success":
+        return listed
+    try:
+        tickets = json.loads(listed["detail"])
+    except (json.JSONDecodeError, KeyError):
+        return listed
+    for ticket in tickets:
+        if ticket.get("ticket_id") == ticket_id:
+            # Nest it. The ticket carries its own "status" field, and spreading
+            # it here overwrote the call status with the ticket state — which
+            # made the state-machine check read "success" as the current state
+            # and wave New -> Closed straight through.
+            return {"status": "success", "source": "remote",
+                    "ticket": ticket, **{k: v for k, v in ticket.items() if k != "status"},
+                    "ticket_state": ticket.get("status")}
+    return {"status": "error", "error_code": "TICKET_NOT_FOUND", "source": "remote",
+            "message": f"Ticket {ticket_id} is not among your tickets."}
+
+
+def _remote_status(ticket_id: str, status: str) -> dict[str, Any]:
+    """Enforce FR-4.3 before calling out.
+
+    The backend accepts whatever status string it is given, including
+    New -> Closed. The requirement to reject that is ours, so the check has to
+    live on this side; relying on a backend to enforce a rule it does not know
+    about is how the mock came to permit it in the first place.
+    """
+    current = _remote_ticket_details(ticket_id)
+    if current.get("status") != "success":
+        return current
+    state = str(current.get("ticket_state") or current.get("state") or "")
+    for known in _REMOTE_TRANSITIONS:
+        if known.lower() in state.lower():
+            state = known
+            break
+
+    target = status.title() if status.lower() != "in progress" else "In Progress"
+    allowed = _REMOTE_TRANSITIONS.get(state)
+    if allowed is not None and target not in allowed:
+        return {
+            "status": "error", "error_code": "INVALID_STATE_TRANSITION", "source": "remote",
+            "message": (f"Cannot move ticket {ticket_id} from '{state}' to '{target}'. "
+                        f"Allowed: {allowed}."),
+        }
+    return _remote(mcp_client.ITSM, "update_ticket_status",
+                   {"ticket_id": ticket_id, "status": target})

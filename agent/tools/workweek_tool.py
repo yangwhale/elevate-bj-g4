@@ -12,6 +12,7 @@ from typing import Any
 
 from .. import config
 from ..guardrails import ModelArmorGuard
+from . import mcp_client
 
 
 # =============================================================================
@@ -110,6 +111,17 @@ def reset_state_for_testing() -> None:
     _store = WorkWeekStateStore()
 
 
+def effective_caller(requested: str | None = None) -> str:
+    """The employee id to send to the backend.
+
+    In remote mode identity comes from the token; anything else is refused by
+    the service. In mock mode it comes from the session.
+    """
+    if mcp_client.enabled():
+        return mcp_client.whoami_or(_store.current_caller_id)
+    return requested or _store.current_caller_id
+
+
 def set_active_caller_context(employee_id: str):
     """Sets active caller context for multi-tenant sessions."""
     _store.current_caller_id = employee_id
@@ -120,6 +132,8 @@ def set_active_caller_context(employee_id: str):
 # =============================================================================
 def get_current_employee_id() -> dict[str, Any]:
     """Resolves the employee ID of the currently authenticated user session."""
+    if mcp_client.enabled():
+        return _remote_identity()
     caller_id = _store.current_caller_id
     emp = _store.get_employee(caller_id)
     emp_name = emp["name"] if emp else "Unknown User"
@@ -136,6 +150,9 @@ def get_employee_balances(employee_id: str | None = None) -> dict[str, Any]:
     Args:
         employee_id: Employee ID (e.g. 'EMP-1002'). If omitted, defaults to active session caller.
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.WORKWEEK, "get_employee_balances",
+                       {"employee_id": effective_caller(employee_id)})
     target_id = employee_id or _store.current_caller_id
 
     # 1. RBAC Isolation Check
@@ -197,6 +214,10 @@ def request_time_off(
         leave_type: 'Vacation' or 'Sick'
         days: Number of working days requested (e.g. 2.0)
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.WORKWEEK, "request_time_off",
+                       {"employee_id": effective_caller(employee_id), "start_date": start_date,
+                        "end_date": end_date, "leave_type": leave_type, "days": days})
     # 1. RBAC Isolation Check
     allowed, rbac_msg = ModelArmorGuard.check_rbac_isolation(
         _store.current_caller_id, employee_id
@@ -296,6 +317,9 @@ def update_personal_info(employee_id: str, address: str, phone: str) -> dict[str
         address: New home address (minimum 5 characters)
         phone: New phone number (must be valid phone format)
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.WORKWEEK, "update_personal_info",
+                       {"employee_id": effective_caller(employee_id), "address": address, "phone": phone})
     # 1. RBAC Check
     allowed, rbac_msg = ModelArmorGuard.check_rbac_isolation(
         _store.current_caller_id, employee_id
@@ -343,6 +367,9 @@ def get_personal_info(employee_id: str | None = None) -> dict[str, Any]:
     Args:
         employee_id: Employee ID (e.g. 'EMP-1002'). If omitted, defaults to active session caller.
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.WORKWEEK, "get_personal_info",
+                       {"employee_id": effective_caller(employee_id)})
     target_id = employee_id or _store.current_caller_id
 
     allowed, rbac_msg = ModelArmorGuard.check_rbac_isolation(
@@ -376,6 +403,9 @@ def cancel_leave_request(employee_id: str, request_id: int) -> dict[str, Any]:
         employee_id: Employee ID (e.g. 'EMP-1002')
         request_id: Numeric leave request ID to cancel
     """
+    if mcp_client.enabled():
+        return _remote(mcp_client.WORKWEEK, "cancel_leave_request",
+                       {"employee_id": effective_caller(employee_id), "request_id": request_id})
     allowed, rbac_msg = ModelArmorGuard.check_rbac_isolation(
         _store.current_caller_id, employee_id
     )
@@ -412,3 +442,48 @@ def cancel_leave_request(employee_id: str, request_id: int) -> dict[str, Any]:
         "refunded_days": target["days"],
         "current_balance_days": emp["leave_balances"][bal_key]["remaining_days"],
     }
+
+
+# ---------------------------------------------------------------- remote path
+def _caller() -> str:
+    return _store.current_caller_id
+
+
+def _remote_identity() -> dict[str, Any]:
+    """Resolve identity from the token rather than from session state."""
+    try:
+        employee_id = mcp_client.whoami()
+    except mcp_client.RemoteError as exc:
+        return {"status": "error", "error_code": "BACKEND_UNAVAILABLE",
+                "source": "remote", "message": str(exc)}
+    _store.current_caller_id = employee_id
+    return {"status": "success", "source": "remote", "employee_id": employee_id,
+            "authenticated_as": employee_id}
+
+
+def _remote(service: str, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Call the real backend and classify its prose reply.
+
+    The service answers in text. Errors arrive as text too — "Access denied",
+    "Employee X not found" — so they are classified here rather than assumed to
+    be success. Anything unrecognised is returned verbatim under `detail`; the
+    model reads it, and inventing a schema the service does not have would be
+    worse than passing the sentence through.
+    """
+    try:
+        text = mcp_client.call(service, tool, arguments)
+    except mcp_client.RemoteError as exc:
+        return {"status": "error", "error_code": "BACKEND_UNAVAILABLE",
+                "source": "remote", "message": str(exc)}
+
+    if mcp_client.is_denial(text):
+        return {"status": "error", "error_code": "403_FORBIDDEN",
+                "source": "remote", "message": text}
+    if mcp_client.is_missing(text):
+        return {"status": "error", "error_code": "NOT_FOUND",
+                "source": "remote", "message": text}
+    lowered = text.lower()
+    if lowered.startswith("error") or "insufficient" in lowered or "invalid" in lowered:
+        return {"status": "error", "error_code": "REJECTED_BY_BACKEND",
+                "source": "remote", "message": text}
+    return {"status": "success", "source": "remote", "detail": text}
